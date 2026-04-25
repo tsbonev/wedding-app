@@ -11,6 +11,22 @@ export const useAppConfigStore = defineStore('config', () => {
   const showRelationLinesOnlySameTable = ref(false)
   const isLinkingMode = ref(false)
   const linkingModeType = ref<'partner' | 'child'>('partner')
+  const activeLinkingSource = ref<string | null>(null)
+  const mousePosX = ref(0)
+  const mousePosY = ref(0)
 
-  return { coupleName, weddingDate, venue, guestSidebarWidth, showRelationLines, showParentalLines, showRelationLinesOnlySameTable, isLinkingMode, linkingModeType }
+  return { 
+    coupleName, 
+    weddingDate, 
+    venue, 
+    guestSidebarWidth, 
+    showRelationLines, 
+    showParentalLines, 
+    showRelationLinesOnlySameTable, 
+    isLinkingMode, 
+    linkingModeType,
+    activeLinkingSource,
+    mousePosX,
+    mousePosY
+  }
 }, { persist: true })

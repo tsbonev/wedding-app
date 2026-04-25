@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { NButton, NTabs, NTabPane, NRadioGroup, NRadioButton, NSwitch } from 'naive-ui'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGuestStore } from '@/stores/useGuestStore'
@@ -37,10 +37,25 @@ function handleEditGuest(guestId: string) {
     showGuestModal.value = true
   }
 }
+
+function onMouseMove(event: MouseEvent | DragEvent) {
+  const canvas = document.querySelector('.seating-canvas')
+  if (canvas) {
+    const rect = canvas.getBoundingClientRect()
+    configStore.mousePosX = event.clientX - rect.left
+    configStore.mousePosY = event.clientY - rect.top
+  }
+}
+
+watch(() => configStore.isLinkingMode, (val) => {
+  if (!val) {
+    configStore.activeLinkingSource = null
+  }
+})
 </script>
 
 <template>
-  <div>
+  <div @mousemove="onMouseMove" @dragover="onMouseMove">
     <n-tabs v-model:value="activeTab" type="line">
       <template #suffix>
         <n-button v-if="activeTab === 'tables'" type="primary" size="small" @click="showAddModal = true">

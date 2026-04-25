@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { NText, NCheckbox } from 'naive-ui'
+import { NText } from 'naive-ui'
 import type { Guest } from '@/types'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
 
+import { useGuestStore } from '@/stores/useGuestStore'
+
 defineProps<{ guests: Guest[] }>()
 const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
 
+const guestStore = useGuestStore()
 const groupStore = useGroupStore()
 const configStore = useAppConfigStore()
 
@@ -29,9 +32,41 @@ function onResizeStart(event: MouseEvent) {
 
 function onDragStart(event: DragEvent, guest: Guest) {
   event.dataTransfer?.setData('guestId', guest.id)
-  const chip = event.currentTarget as HTMLElement
-  const rect = chip.getBoundingClientRect()
-  event.dataTransfer?.setDragImage(chip, event.clientX - rect.left, event.clientY - rect.top)
+  if (configStore.isLinkingMode) {
+    configStore.activeLinkingSource = guest.id
+    // Set transparent drag image
+    const img = new Image()
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+    event.dataTransfer?.setDragImage(img, 0, 0)
+  } else {
+    const chip = event.currentTarget as HTMLElement
+    const rect = chip.getBoundingClientRect()
+    event.dataTransfer?.setDragImage(chip, event.clientX - rect.left, event.clientY - rect.top)
+  }
+}
+
+function onDragEnd() {
+  configStore.activeLinkingSource = null
+}
+
+function onDragOver(event: DragEvent) {
+  if (configStore.isLinkingMode) {
+    event.preventDefault()
+  }
+}
+
+function onDrop(event: DragEvent, targetGuest: Guest) {
+  if (!configStore.isLinkingMode) return
+  event.preventDefault()
+  const guestId = event.dataTransfer?.getData('guestId')
+  if (guestId && guestId !== targetGuest.id) {
+    if (configStore.linkingModeType === 'partner') {
+      guestStore.updateGuest(guestId, { partnerId: targetGuest.id })
+    } else if (configStore.linkingModeType === 'child') {
+      guestStore.updateGuest(guestId, { isChild: true, parentId: targetGuest.id })
+    }
+  }
+  configStore.activeLinkingSource = null
 }
 
 function groupColor(guest: Guest) {
@@ -55,9 +90,13 @@ function onDoubleClick(guestId: string) {
         v-for="guest in guests"
         :key="guest.id"
         class="guest-chip"
+        :data-guest-id="guest.id"
         :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px' } : {}"
         draggable="true"
         @dragstart="onDragStart($event, guest)"
+        @dragend="onDragEnd"
+        @dragover="onDragOver"
+        @drop="onDrop($event, guest)"
         @dblclick="onDoubleClick(guest.id)"
       >
         <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0">

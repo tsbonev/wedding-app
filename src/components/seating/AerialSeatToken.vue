@@ -132,9 +132,22 @@ function onDragStart(event: DragEvent) {
   event.dataTransfer!.setData('sourceTableId', props.tableId)
   event.dataTransfer!.setData('sourceSeatIndex', String(props.seatIndex))
   event.dataTransfer!.effectAllowed = 'move'
-  const token = event.currentTarget as HTMLElement
-  const rect = token.getBoundingClientRect()
-  event.dataTransfer!.setDragImage(token, event.clientX - rect.left, event.clientY - rect.top)
+
+  if (configStore.isLinkingMode) {
+    configStore.activeLinkingSource = guest.value.id
+    // Set transparent drag image
+    const img = new Image()
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+    event.dataTransfer!.setDragImage(img, 0, 0)
+  } else {
+    const token = event.currentTarget as HTMLElement
+    const rect = token.getBoundingClientRect()
+    event.dataTransfer!.setDragImage(token, event.clientX - rect.left, event.clientY - rect.top)
+  }
+}
+
+function onDragEnd() {
+  configStore.activeLinkingSource = null
 }
 
 function onDragOver(event: DragEvent) {
@@ -161,6 +174,7 @@ function onDrop(event: DragEvent) {
         guestStore.updateGuest(guestId, { isChild: true, parentId: props.guestId })
       }
     }
+    configStore.activeLinkingSource = null
     return
   }
 
@@ -205,6 +219,7 @@ function onDoubleClick() {
           :title="configStore.isLinkingMode && guest ? 'Drag onto someone to set a relation' : ''"
           @click="openDropdown"
           @dragstart="onDragStart"
+          @dragend="onDragEnd"
           @dragover="onDragOver"
           @dragleave="onDragLeave"
           @drop="onDrop"
