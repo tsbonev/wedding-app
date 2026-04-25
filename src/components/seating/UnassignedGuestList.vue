@@ -6,6 +6,7 @@ import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
 
 defineProps<{ guests: Guest[] }>()
+const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
 
 const groupStore = useGroupStore()
 const configStore = useAppConfigStore()
@@ -37,6 +38,10 @@ function groupColor(guest: Guest) {
   if (!guest.groupId) return null
   return groupStore.getById(guest.groupId)?.color ?? null
 }
+
+function onDoubleClick(guestId: string) {
+  emit('edit-guest', guestId)
+}
 </script>
 
 <template>
@@ -53,6 +58,7 @@ function groupColor(guest: Guest) {
         :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px' } : {}"
         draggable="true"
         @dragstart="onDragStart($event, guest)"
+        @dblclick="onDoubleClick(guest.id)"
       >
         <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0">
           <span
@@ -64,16 +70,6 @@ function groupColor(guest: Guest) {
         <RSVPBadge :status="guest.rsvpStatus" />
       </div>
       <n-text v-if="guests.length === 0" depth="3" style="font-size: 12px;">All guests assigned 🎉</n-text>
-    </div>
-    <div class="sidebar-footer">
-      <n-checkbox :checked="configStore.showPlusOneLines ?? true" @update:checked="configStore.showPlusOneLines = $event">
-        Show plus-one lines
-      </n-checkbox>
-      <div v-if="configStore.showPlusOneLines ?? true" style="margin-top: 8px; margin-left: 24px;">
-        <n-checkbox :checked="configStore.showPlusOneLinesOnlySameTable ?? false" @update:checked="configStore.showPlusOneLinesOnlySameTable = $event">
-          <span style="font-size: 12px">Only if on same table</span>
-        </n-checkbox>
-      </div>
     </div>
   </div>
 </template>

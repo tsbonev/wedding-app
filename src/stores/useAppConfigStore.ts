@@ -6,9 +6,11 @@ export const useAppConfigStore = defineStore('config', () => {
   const weddingDate = ref<string | null>(null)
   const venue = ref('')
   const guestSidebarWidth = ref(280)
-  const showPlusOneLines = ref(true)
-  const showPlusOneLinesOnlySameTable = ref(false)
+  const showRelationLines = ref(true)
+  const showParentalLines = ref(true)
+  const showRelationLinesOnlySameTable = ref(false)
   const isLinkingMode = ref(false)
+  const linkingModeType = ref<'partner' | 'child'>('partner')
 
-  return { coupleName, weddingDate, venue, guestSidebarWidth, showPlusOneLines, showPlusOneLinesOnlySameTable, isLinkingMode }
+  return { coupleName, weddingDate, venue, guestSidebarWidth, showRelationLines, showParentalLines, showRelationLinesOnlySameTable, isLinkingMode, linkingModeType }
 }, { persist: true })

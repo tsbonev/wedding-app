@@ -13,6 +13,8 @@ const props = defineProps<{
   guestId: string | null
 }>()
 
+const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
+
 const guestStore = useGuestStore()
 const seatingStore = useSeatingStore()
 const groupStore = useGroupStore()
@@ -149,6 +151,12 @@ function onDrop(event: DragEvent) {
 function unassign() {
   if (props.guestId) seatingStore.unassignGuest(props.guestId)
 }
+
+function onDoubleClick() {
+  if (props.guestId) {
+    emit('edit-guest', props.guestId)
+  }
+}
 </script>
 
 <template>
@@ -163,6 +171,7 @@ function unassign() {
       @dragover="onDragOver"
       @dragleave="onDragLeave"
       @drop="onDrop"
+      @dblclick="onDoubleClick"
     >
       <template v-if="guest">
         <span v-if="groupColor" class="group-dot" :style="{ background: groupColor }" :title="groupStore.getById(guest.groupId!)?.name" />

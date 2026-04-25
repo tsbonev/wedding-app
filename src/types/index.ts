@@ -13,7 +13,9 @@ export interface Guest {
   rsvpStatus: RSVPStatus
   mealChoiceId: string | null
   dietaryNotes: string
-  plusOneOf: string | null
+  partnerId: string | null
+  parentId: string | null
+  isChild: boolean
   groupId: string | null
   notes: string
   tableId: string | null

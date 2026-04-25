@@ -6,7 +6,10 @@ import { useSeatingStore } from '@/stores/useSeatingStore'
 import SeatBadge from './SeatBadge.vue'
 
 const props = defineProps<{ table: Table }>()
-const emit = defineEmits<{ (e: 'delete', id: string): void }>()
+const emit = defineEmits<{
+  (e: 'delete', id: string): void
+  (e: 'edit-guest', id: string): void
+}>()
 const seatingStore = useSeatingStore()
 const dialog = useDialog()
 const isConfirming = ref(false)
@@ -141,6 +144,7 @@ const sortedSeats = computed(() =>
       :table-id="table.id"
       :seat-index="seat.index"
       :guest-id="seat.guestId"
+      @edit-guest="emit('edit-guest', $event)"
     />
 
     <template #action>

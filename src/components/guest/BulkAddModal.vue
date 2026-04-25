@@ -24,10 +24,19 @@ const groupOptions = computed<SelectOption[]>(() =>
   }))
 )
 
-function renderGroupLabel(option: SelectOption) {
+function renderGuestLabel(option: SelectOption & { color?: string | null }) {
   return h('div', { style: 'display:flex; align-items:center; gap:8px' }, [
     h('span', {
-      style: `width:12px; height:12px; border-radius:50%; background:${option.color}; display:inline-block; flex-shrink:0`,
+      style: `width:12px; height:12px; border-radius:50%; background:${option.color ?? '#d1d5db'}; display:inline-block; flex-shrink:0`,
+    }),
+    h('span', String(option.label)),
+  ])
+}
+
+function renderSingleSelectLabel(option: SelectOption & { color?: string | null }) {
+  return h('div', { style: 'display:flex; align-items:center; gap:8px' }, [
+    h('span', {
+      style: `width:12px; height:12px; border-radius:50%; background:${option.color ?? '#d1d5db'}; display:inline-block; flex-shrink:0`,
     }),
     h('span', String(option.label)),
   ])
@@ -54,7 +63,9 @@ function handleBulkAdd() {
       rsvpStatus: 'pending',
       mealChoiceId: null,
       dietaryNotes: '',
-      plusOneOf: null,
+      partnerId: null,
+      parentId: null,
+      isChild: false,
       groupId: selectedGroupId.value,
       notes: '',
       tableId: null,
@@ -95,7 +106,9 @@ function handleBulkAdd() {
           <n-select
             v-model:value="selectedGroupId"
             :options="groupOptions"
-            :render-label="renderGroupLabel"
+            :render-label="renderGuestLabel"
+            :render-label-single="renderSingleSelectLabel"
+            filterable
             clearable
             placeholder="Select group (optional)"
           />

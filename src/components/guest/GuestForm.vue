@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, h } from 'vue'
 import {
-  NForm, NFormItem, NInput, NSelect, NButton, NSpace
+  NForm, NFormItem, NInput, NSelect, NButton, NSpace, NCheckbox
 } from 'naive-ui'
 import type { SelectOption } from 'naive-ui'
 import type { Guest, RSVPStatus } from '@/types'
@@ -25,7 +25,9 @@ const form = ref({
   rsvpStatus: (props.initial?.rsvpStatus ?? 'pending') as RSVPStatus,
   mealChoiceId: props.initial?.mealChoiceId ?? null as string | null,
   dietaryNotes: props.initial?.dietaryNotes ?? '',
-  plusOneOf: props.initial?.plusOneOf ?? null as string | null,
+  partnerId: props.initial?.partnerId ?? null as string | null,
+  parentId: props.initial?.parentId ?? null as string | null,
+  isChild: props.initial?.isChild ?? false,
   groupId: props.initial?.groupId ?? null as string | null,
   notes: props.initial?.notes ?? '',
   tableId: props.initial?.tableId ?? null as string | null,
@@ -50,16 +52,39 @@ const groupOptions = computed<SelectOption[]>(() =>
   }))
 )
 
-const primaryGuestOptions = computed(() =>
+const primaryGuestOptions = computed((): (SelectOption & { color?: string | null })[] =>
   guestStore.guests
-    .filter((g) => !g.plusOneOf && g.id !== props.initial?.id)
-    .map((g) => ({ label: `${g.firstName} ${g.lastName}`, value: g.id }))
+    .filter((g) => g.id !== props.initial?.id && (!g.partnerId || g.id === props.initial?.partnerId))
+    .map((g) => ({
+      label: `${g.firstName} ${g.lastName}`,
+      value: g.id,
+      color: g.groupId ? (groupStore.getById(g.groupId)?.color ?? null) : null,
+    }))
 )
 
-function renderGroupLabel(option: SelectOption) {
+const parentOptions = computed((): (SelectOption & { color?: string | null })[] =>
+  guestStore.guests
+    .filter((g) => g.id !== props.initial?.id && (!g.isChild || g.id === props.initial?.parentId))
+    .map((g) => ({
+      label: `${g.firstName} ${g.lastName}`,
+      value: g.id,
+      color: g.groupId ? (groupStore.getById(g.groupId)?.color ?? null) : null,
+    }))
+)
+
+function renderGuestLabel(option: SelectOption & { color?: string | null }) {
   return h('div', { style: 'display:flex; align-items:center; gap:8px' }, [
     h('span', {
-      style: `width:12px; height:12px; border-radius:50%; background:${option.color}; display:inline-block; flex-shrink:0`,
+      style: `width:12px; height:12px; border-radius:50%; background:${option.color ?? '#d1d5db'}; display:inline-block; flex-shrink:0`,
+    }),
+    h('span', String(option.label)),
+  ])
+}
+
+function renderSingleSelectLabel(option: SelectOption & { color?: string | null }) {
+  return h('div', { style: 'display:flex; align-items:center; gap:8px' }, [
+    h('span', {
+      style: `width:12px; height:12px; border-radius:50%; background:${option.color ?? '#d1d5db'}; display:inline-block; flex-shrink:0`,
     }),
     h('span', String(option.label)),
   ])
@@ -80,7 +105,9 @@ function renderGroupLabel(option: SelectOption) {
       <n-select
         v-model:value="form.groupId"
         :options="groupOptions"
-        :render-label="renderGroupLabel"
+        :render-label="renderGuestLabel"
+        :render-label-single="renderSingleSelectLabel"
+        filterable
         clearable
         placeholder="Select group"
       />
@@ -94,12 +121,31 @@ function renderGroupLabel(option: SelectOption) {
     <n-form-item label="Dietary Notes">
       <n-input v-model:value="form.dietaryNotes" placeholder="Nut allergy, gluten-free, etc." />
     </n-form-item>
-    <n-form-item label="Plus-one of">
+    <n-space>
+      <n-form-item label="Child">
+        <n-checkbox v-model:checked="form.isChild">Is Child</n-checkbox>
+      </n-form-item>
+      <n-form-item v-if="form.isChild" label="Parent" style="flex:1; min-width:200px">
+        <n-select
+          v-model:value="form.parentId"
+          :options="parentOptions"
+          :render-label="renderGuestLabel"
+          :render-label-single="renderSingleSelectLabel"
+          filterable
+          clearable
+          placeholder="Select parent"
+        />
+      </n-form-item>
+    </n-space>
+    <n-form-item label="Partner">
       <n-select
-        v-model:value="form.plusOneOf"
+        v-model:value="form.partnerId"
         :options="primaryGuestOptions"
+        :render-label="renderGuestLabel"
+        :render-label-single="renderSingleSelectLabel"
+        filterable
         clearable
-        placeholder="Select primary guest (if this is a +1)"
+        placeholder="Select partner"
       />
     </n-form-item>
     <n-form-item label="Notes">

@@ -6,6 +6,7 @@ import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import AerialSeatToken from './AerialSeatToken.vue'
 
 const props = defineProps<{ table: Table }>()
+const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
 const seatingStore = useSeatingStore()
 const configStore = useAppConfigStore()
 const isSelected = ref(false)
@@ -224,6 +225,7 @@ function setOrigin(corner: SeatOriginCorner) {
             v-for="seat in topSeats" :key="seat.index"
             :table-id="table.id" :seat-index="seat.index" :guest-id="seat.guestId"
             :rotation="table.rotation"
+            @edit-guest="emit('edit-guest', $event)"
           />
         </div>
 
@@ -269,6 +271,7 @@ function setOrigin(corner: SeatOriginCorner) {
             v-for="seat in bottomSeats" :key="seat.index"
             :table-id="table.id" :seat-index="seat.index" :guest-id="seat.guestId"
             :rotation="table.rotation"
+            @edit-guest="emit('edit-guest', $event)"
           />
         </div>
       </div>
@@ -317,6 +320,7 @@ function setOrigin(corner: SeatOriginCorner) {
           :rotation="table.rotation"
           :style="seatCircleStyle(idx)"
           style="position:absolute"
+          @edit-guest="emit('edit-guest', $event)"
         />
       </div>
     </template>

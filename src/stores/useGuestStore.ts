@@ -15,11 +15,46 @@ export const useGuestStore = defineStore('guests', () => {
 
   function updateGuest(id: string, patch: Partial<Guest>) {
     const idx = guests.value.findIndex((g) => g.id === id)
-    if (idx !== -1) guests.value[idx] = { ...guests.value[idx], ...patch }
+    if (idx !== -1) {
+      const oldGuest = guests.value[idx]
+      const newPartnerId = patch.partnerId
+
+      // Handle partnership rework
+      if (patch.hasOwnProperty('partnerId') && newPartnerId !== oldGuest.partnerId) {
+        // 1. Clear old partner's reference to this guest
+        if (oldGuest.partnerId) {
+          const oldPartner = guests.value.find(g => g.id === oldGuest.partnerId)
+          if (oldPartner && oldPartner.partnerId === id) {
+            oldPartner.partnerId = null
+          }
+        }
+
+        // 2. Clear new partner's old partnership
+        if (newPartnerId) {
+          const newPartner = guests.value.find(g => g.id === newPartnerId)
+          if (newPartner) {
+            if (newPartner.partnerId && newPartner.partnerId !== id) {
+              const previousPartnerOfNewPartner = guests.value.find(g => g.id === newPartner.partnerId)
+              if (previousPartnerOfNewPartner) {
+                previousPartnerOfNewPartner.partnerId = null
+              }
+            }
+            newPartner.partnerId = id
+          }
+        }
+      }
+
+      guests.value[idx] = { ...guests.value[idx], ...patch }
+    }
   }
 
   function deleteGuest(id: string) {
-    guests.value = guests.value.filter((g) => g.id !== id && g.plusOneOf !== id)
+    const guestToDelete = guests.value.find(g => g.id === id)
+    if (guestToDelete?.partnerId) {
+      const partner = guests.value.find(g => g.id === guestToDelete.partnerId)
+      if (partner) partner.partnerId = null
+    }
+    guests.value = guests.value.filter((g) => g.id !== id && g.parentId !== id)
   }
 
   function bulkReplace(list: Guest[]) {

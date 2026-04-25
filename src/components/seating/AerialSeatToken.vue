@@ -16,6 +16,8 @@ const props = defineProps<{
   rotation?: number
 }>()
 
+const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
+
 const guestStore = useGuestStore()
 const groupStore = useGroupStore()
 const menuStore = useMenuStore()
@@ -151,9 +153,13 @@ function onDrop(event: DragEvent) {
   if (!guestId) return
 
   if (configStore.isLinkingMode) {
-    // Linking Mode: source is plus-one, target (props.guestId) is origin
+    // Linking Mode: 
     if (props.guestId && props.guestId !== guestId) {
-      guestStore.updateGuest(guestId, { plusOneOf: props.guestId })
+      if (configStore.linkingModeType === 'partner') {
+        guestStore.updateGuest(guestId, { partnerId: props.guestId })
+      } else if (configStore.linkingModeType === 'child') {
+        guestStore.updateGuest(guestId, { isChild: true, parentId: props.guestId })
+      }
     }
     return
   }
@@ -170,6 +176,12 @@ function onDrop(event: DragEvent) {
 function unassign() {
   if (props.guestId) seatingStore.unassignGuest(props.guestId)
 }
+
+function onDoubleClick() {
+  if (props.guestId) {
+    emit('edit-guest', props.guestId)
+  }
+}
 </script>
 
 <template>
@@ -182,22 +194,24 @@ function unassign() {
             'is-occupied': !!guest,
             'is-empty': !guest,
             'is-drag-over': isDragOver,
+            'is-child': guest?.isChild,
           }"
           :data-guest-id="guestId"
-          :style="guest && groupColor ? { background: groupColor } : {}"
+          :style="[
+            guest && groupColor ? { background: groupColor } : {},
+            rotation ? { transform: `rotate(${-rotation}deg)` } : {}
+          ]"
           :draggable="!!guest"
-          :title="configStore.isLinkingMode && guest ? 'Drag onto someone to make them their plus-one' : ''"
+          :title="configStore.isLinkingMode && guest ? 'Drag onto someone to set a relation' : ''"
           @click="openDropdown"
           @dragstart="onDragStart"
           @dragover="onDragOver"
           @dragleave="onDragLeave"
           @drop="onDrop"
+          @dblclick="onDoubleClick"
           @contextmenu.prevent="unassign"
         >
-          <div
-            class="seat-content"
-            :style="rotation ? { transform: `rotate(${-rotation}deg)` } : {}"
-          >
+          <div class="seat-content">
             <div v-if="guest" class="seat-guest-info">
               <span class="initials">{{ initials }}</span>
             </div>
@@ -257,6 +271,10 @@ function unassign() {
   box-sizing: border-box;
   cursor: pointer;
 }
+.seat-token.is-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
 .seat-content {
   display: flex;
   align-items: center;
@@ -272,7 +290,7 @@ function unassign() {
   font-size: 13px;
 }
 .is-occupied:hover {
-  transform: scale(1.1);
+  transform: scale(1.1) rotate(calc(v-bind('rotation || 0') * -1deg));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 .is-occupied:active { cursor: grabbing; }

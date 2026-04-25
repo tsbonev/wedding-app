@@ -33,9 +33,9 @@ const rsvpFilterOptions = [
   { label: 'Declined', value: 'declined' },
 ]
 
-const groupFilterOptions = computed(() => [
+const groupFilterOptions = computed<(SelectOption & { color?: string })[]>(() => [
   { label: 'All Groups', value: '' },
-  ...groupStore.groups.map((g) => ({ label: g.name, value: g.id })),
+  ...groupStore.groups.map((g) => ({ label: g.name, value: g.id, color: g.color })),
 ])
 
 const filtered = computed(() => {
@@ -123,6 +123,14 @@ function renderGroupLabel(option: SelectOption & { color?: string }) {
   ])
 }
 
+function renderSingleSelectLabel(option: SelectOption & { color?: string }) {
+  if (!option.color) return h('span', String(option.label))
+  return h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
+    h('span', { style: `width:10px;height:10px;border-radius:50%;background:${option.color};display:inline-block;flex-shrink:0` }),
+    h('span', String(option.label)),
+  ])
+}
+
 // ── Misc helpers ──────────────────────────────────────────────────────────────
 
 function getMealLabel(id: string | null) {
@@ -131,10 +139,10 @@ function getMealLabel(id: string | null) {
   return opt ? `${opt.emoji} ${opt.label}` : '—'
 }
 
-function getPlusOneLabel(id: string | null) {
+function getPartnerLabel(id: string | null) {
   if (!id) return null
   const g = guestStore.getById(id)
-  return g ? `+1 of ${g.firstName} ${g.lastName}` : null
+  return g ? `Partner of ${g.firstName} ${g.lastName}` : null
 }
 
 function openAdd() {
@@ -184,7 +192,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
         ])
       }
 
-      const plusOne = getPlusOneLabel(row.plusOneOf)
+      const partnerLabel = getPartnerLabel(row.partnerId)
       const grp = row.groupId ? groupStore.getById(row.groupId) : null
       return h('div', { class: 'editable-cell', onClick: () => startNameEdit(row) }, [
         h('div', { style: 'display:flex;align-items:center;gap:6px' }, [
@@ -192,8 +200,9 @@ const columns = computed<DataTableColumns<Guest>>(() => [
             ? h('span', { style: `width:10px;height:10px;border-radius:50%;background:${grp.color};display:inline-block;flex-shrink:0` })
             : null,
           h('span', `${row.firstName} ${row.lastName}`),
+          row.isChild ? h('span', { title: 'Child' }, '👶') : null,
         ]),
-        plusOne ? h(NText, { depth: 3, style: 'font-size:11px;margin-top:1px' }, { default: () => plusOne }) : null,
+        partnerLabel ? h(NText, { depth: 3, style: 'font-size:11px;margin-top:1px' }, { default: () => partnerLabel }) : null,
       ])
     },
   },
@@ -207,6 +216,8 @@ const columns = computed<DataTableColumns<Guest>>(() => [
           value: row.groupId ?? '',
           options: groupCellOptions.value,
           renderLabel: renderGroupLabel,
+          renderLabelSingle: renderSingleSelectLabel,
+          filterable: true,
           size: 'small',
           show: selectOpen.value,
           style: 'width:100%',
@@ -315,7 +326,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
           h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => 'Edit' }),
           h(NPopconfirm, { onPositiveClick: () => guestStore.deleteGuest(row.id) }, {
             trigger: () => h(NButton, { size: 'small', type: 'error', ghost: true }, { default: () => 'Delete' }),
-            default: () => 'Delete this guest and their plus-ones?',
+            default: () => 'Delete this guest and their relations?',
           }),
         ],
       }),
@@ -336,7 +347,14 @@ const columns = computed<DataTableColumns<Guest>>(() => [
     <n-space style="margin-bottom: 16px;" wrap>
       <n-input v-model:value="search" placeholder="Search name…" clearable style="width: 220px" />
       <n-select v-model:value="rsvpFilter" :options="rsvpFilterOptions" style="width: 140px" />
-      <n-select v-model:value="groupFilter" :options="groupFilterOptions" style="width: 180px" />
+      <n-select
+        v-model:value="groupFilter"
+        :options="groupFilterOptions"
+        :render-label="renderGroupLabel"
+        :render-label-single="renderSingleSelectLabel"
+        filterable
+        style="width: 180px"
+      />
     </n-space>
 
     <EmptyState
