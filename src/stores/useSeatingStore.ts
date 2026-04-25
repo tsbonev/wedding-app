@@ -96,10 +96,10 @@ export const useSeatingStore = defineStore('seating', () => {
 
   function bulkReplace(list: Table[]) {
     tables.value = list.map(t => ({
-      rotation: 0,
+      ...t,
+      rotation: t.rotation ?? 0,
       aerialPosX: t.aerialPosX ?? t.posX,
       aerialPosY: t.aerialPosY ?? t.posY,
-      ...t
     }))
   }
 
