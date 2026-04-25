@@ -5,6 +5,7 @@ import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGuestStore } from '@/stores/useGuestStore'
+import { useGroupStore } from '@/stores/useGroupStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import { useI18nStore } from '@/stores/useI18nStore'
 import type { Guest } from '@/types'
@@ -18,6 +19,7 @@ import EmptyState from '@/components/shared/EmptyState.vue'
 
 const seatingStore = useSeatingStore()
 const guestStore = useGuestStore()
+const groupStore = useGroupStore()
 const configStore = useAppConfigStore()
 const i18n = useI18nStore()
 const message = useMessage()
@@ -279,6 +281,17 @@ async function handlePrint() {
                   @edit-guest="handleEditGuest"
                 />
               </div>
+
+              <!-- Print-only legend -->
+              <div class="print-legend">
+                <div class="print-legend-title">{{ i18n.t('legend') }}</div>
+                <div class="print-legend-items">
+                  <div v-for="group in groupStore.groups" :key="group.id" class="print-legend-item">
+                    <span class="print-legend-dot" :style="{ backgroundColor: group.color }"></span>
+                    <span>{{ group.name }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <UnassignedGuestList :guests="unassigned" @edit-guest="handleEditGuest" />
@@ -451,6 +464,39 @@ async function handlePrint() {
     width: 100% !important;
   }
 
+  .print-legend {
+    display: block !important;
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+  }
+  .print-legend-title {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #334155;
+  }
+  .print-legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .print-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #475569;
+  }
+  .print-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
   /* Floor Plan specific print styles */
   .is-printing-floorplan {
     transform: none !important;
@@ -539,7 +585,8 @@ async function handlePrint() {
   color: #64748b;
   font-weight: 600;
 }
-.print-header {
+.print-header,
+.print-legend {
   display: none;
 }
 </style>

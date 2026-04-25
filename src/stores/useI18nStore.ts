@@ -195,6 +195,7 @@ export const useI18nStore = defineStore('i18n', () => {
       unselect_all: 'Unselect All',
       clear: 'Clear',
       seat_label: 'Seat #{n}',
+      legend: 'Legend',
     },
     bg: {
       dashboard: 'Табло',
@@ -384,6 +385,7 @@ export const useI18nStore = defineStore('i18n', () => {
       unselect_all: 'Премахни всички',
       clear: 'Изчисти',
       seat_label: 'Място №{n}',
+      legend: 'Легенда',
     }
   }
 
