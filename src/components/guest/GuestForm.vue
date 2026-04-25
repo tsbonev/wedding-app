@@ -38,6 +38,7 @@ const form = ref({
   notes: props.initial?.notes ?? '',
   tableId: props.initial?.tableId ?? null as string | null,
   roomId: props.initial?.roomId ?? null as string | null,
+  isChildrenSeatAdjoining: props.initial?.isChildrenSeatAdjoining ?? false,
 })
 
 const rsvpOptions = [
@@ -153,15 +154,20 @@ function onEmojiSelect(emoji: any) {
         </n-input-group>
       </n-form-item>
       <n-form-item v-if="form.isChild" label="Parent" style="flex:1; min-width:200px">
-        <n-select
-          v-model:value="form.parentId"
-          :options="parentOptions"
-          :render-label="renderGuestLabel"
-          :render-label-single="renderSingleSelectLabel"
-          filterable
-          clearable
-          placeholder="Select parent"
-        />
+        <n-space vertical>
+          <n-select
+            v-model:value="form.parentId"
+            :options="parentOptions"
+            :render-label="renderGuestLabel"
+            :render-label-single="renderSingleSelectLabel"
+            filterable
+            clearable
+            placeholder="Select parent"
+          />
+          <n-checkbox v-if="form.parentId" v-model:checked="form.isChildrenSeatAdjoining">
+            Adjoining Seat (Small badge on diagonal)
+          </n-checkbox>
+        </n-space>
       </n-form-item>
     </n-space>
     <n-form-item label="Partner">

@@ -42,6 +42,10 @@ watch(showDropdown, async (val) => {
 })
 
 const guest = computed(() => props.guestId ? guestStore.getById(props.guestId) : null)
+const childrenGuests = computed(() => {
+  if (!props.guestId) return []
+  return guestStore.guests.filter(g => g.parentId === props.guestId && g.isChildrenSeatAdjoining && (g.tableId === props.tableId || g.tableId === null))
+})
 const groupInfo = computed(() => guest.value?.groupId ? groupStore.getById(guest.value.groupId) ?? null : null)
 const groupColor = computed(() => groupInfo.value?.color ?? null)
 const mealOption = computed(() => {
@@ -203,42 +207,85 @@ function onDoubleClick() {
   <div class="seat-wrapper">
     <n-tooltip trigger="hover" :disabled="!guest || showDropdown" placement="top" :keep-alive-on-hover="false">
       <template #trigger>
-        <div
-          class="seat-token"
-          :class="{
-            'is-occupied': !!guest,
-            'is-empty': !guest,
-            'is-drag-over': isDragOver,
-          }"
-          :data-guest-id="guestId"
-          :style="[
-            guest && groupColor ? { background: groupColor } : {},
-            rotation ? { transform: `rotate(${-rotation}deg)` } : {}
-          ]"
-          :draggable="!!guest"
-          :title="configStore.isLinkingMode && guest ? 'Drag onto someone to set a relation' : ''"
-          @click="openDropdown"
-          @dragstart="onDragStart"
-          @dragend="onDragEnd"
-          @dragover="onDragOver"
-          @dragleave="onDragLeave"
-          @drop="onDrop"
-          @dblclick="onDoubleClick"
-          @contextmenu.prevent="unassign"
-        >
-          <div class="seat-content">
-            <template v-if="guest?.customEmoji">
-              <div class="special-role-crown">{{ guest.customEmoji }}</div>
-            </template>
-            <template v-else-if="guest">
-              <div v-if="guest.isGroom || guest.isBride" class="special-role-crown">👑</div>
-              <div v-if="guest.isChild" class="special-role-crown">👶</div>
-            </template>
-            <div v-if="guest" class="seat-guest-info">
-              <span class="initials">{{ initials }}</span>
+        <div v-if="!guest?.isChildrenSeatAdjoining" class="seat-token-group">
+          <div
+            class="seat-token"
+            :class="{
+              'is-occupied': !!guest,
+              'is-empty': !guest,
+              'is-drag-over': isDragOver,
+            }"
+            :data-guest-id="guestId"
+            :style="[
+              guest && groupColor ? { background: groupColor } : {},
+              rotation ? { transform: `rotate(${-rotation}deg)` } : {}
+            ]"
+            :draggable="!!guest"
+            :title="configStore.isLinkingMode && guest ? 'Drag onto someone to set a relation' : ''"
+            @click="openDropdown"
+            @dragstart="onDragStart"
+            @dragend="onDragEnd"
+            @dragover="onDragOver"
+            @dragleave="onDragLeave"
+            @drop="onDrop"
+            @dblclick="onDoubleClick"
+            @contextmenu.prevent="unassign"
+          >
+            <div class="seat-content">
+              <template v-if="guest?.customEmoji">
+                <div class="special-role-crown">{{ guest.customEmoji }}</div>
+              </template>
+              <template v-else-if="guest">
+                <div v-if="guest.isGroom || guest.isBride" class="special-role-crown">👑</div>
+                <div v-if="guest.isChild" class="special-role-crown">👶</div>
+              </template>
+              <div v-if="guest" class="seat-guest-info">
+                <span class="initials">{{ initials }}</span>
+              </div>
+              <span v-else class="seat-num">{{ displaySeatNumber }}</span>
             </div>
-            <span v-else class="seat-num">{{ displaySeatNumber }}</span>
           </div>
+
+          <!-- Adjoining children badges -->
+          <n-tooltip
+            v-for="(child, idx) in childrenGuests"
+            :key="child.id"
+            trigger="hover"
+            placement="top"
+          >
+            <template #trigger>
+              <div
+                class="adjoining-child-badge"
+                :class="`pos-${idx % 4}`"
+                :style="{
+                  background: child.groupId ? (groupStore.getById(child.groupId)?.color ?? '#3b82f6') : '#3b82f6',
+                  transform: rotation ? `rotate(${-rotation}deg)` : ''
+                }"
+                @dblclick.stop="emit('edit-guest', child.id)"
+              >
+                <div class="adjoining-child-content">
+                  <span v-if="child.customEmoji" class="adjoining-emoji">{{ child.customEmoji }}</span>
+                  <span v-else class="adjoining-emoji">👶</span>
+                  <span class="adjoining-initials">{{ child.firstName[0] }}{{ child.lastName[0] }}</span>
+                </div>
+              </div>
+            </template>
+            <div class="seat-tooltip">
+              <div class="tooltip-name">{{ child.firstName }} {{ child.lastName }}</div>
+              <div v-if="child.groupId" class="tooltip-row">
+                <span class="group-dot" :style="{ background: groupStore.getById(child.groupId)?.color }" />
+                {{ groupStore.getById(child.groupId)?.name }}
+              </div>
+              <div v-if="child.mealChoiceId" class="tooltip-row">
+                {{ menuStore.menuOptions.find(m => m.id === child.mealChoiceId)?.emoji }} 
+                {{ menuStore.menuOptions.find(m => m.id === child.mealChoiceId)?.label }}
+              </div>
+              <div v-if="child.dietaryNotes" class="tooltip-row tooltip-diet">{{ child.dietaryNotes }}</div>
+            </div>
+          </n-tooltip>
+        </div>
+        <div v-else-if="guest?.isChildrenSeatAdjoining" class="adjoining-placeholder">
+          <span class="seat-num">{{ displaySeatNumber }}</span>
         </div>
       </template>
 
@@ -277,6 +324,12 @@ function onDoubleClick() {
 .seat-wrapper {
   position: relative;
   display: inline-flex;
+}
+.seat-token-group {
+  position: relative;
+}
+.seat-token-group:hover .seat-token {
+  z-index: 10;
 }
 .seat-token {
   width: 40px;
@@ -345,6 +398,54 @@ function onDoubleClick() {
 .initials {
   letter-spacing: 0.5px;
 }
+.adjoining-child-badge {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.adjoining-child-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.adjoining-emoji {
+  font-size: 13px;
+  margin-bottom: -1px;
+}
+.adjoining-initials {
+  font-size: 8px;
+  font-weight: bold;
+  color: #fff;
+}
+.adjoining-child-badge.pos-0 { bottom: -4px; right: -4px; }
+.adjoining-child-badge.pos-1 { top: -4px; left: -4px; }
+.adjoining-child-badge.pos-2 { bottom: -4px; left: -4px; }
+.adjoining-child-badge.pos-3 { top: -4px; right: -4px; }
+
+.adjoining-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px dashed #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #9ca3af;
+  opacity: 0.5;
+}
+
 .seat-guest-info {
   display: flex;
   flex-direction: column;

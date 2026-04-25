@@ -113,16 +113,22 @@ const relationArcs = computed(() => {
       const partner = guestStore.getById(guest.partnerId)
       if (partner) {
         if (!onlySameTable || (guest.tableId && guest.tableId === partner.tableId)) {
-          const pos1 = guestPositions.value.get(guest.id)
-          const pos2 = guestPositions.value.get(partner.id)
+          // Both must be assigned to a table
+          const isGuestAssigned = guestStore.isGuestAssignedToTable(guest)
+          const isPartnerAssigned = guestStore.isGuestAssignedToTable(partner)
+          
+          if (isGuestAssigned && isPartnerAssigned) {
+            const pos1 = guestPositions.value.get(guest.id)
+            const pos2 = guestPositions.value.get(partner.id) || (partner.parentId ? guestPositions.value.get(partner.parentId) : null)
 
-          if (pos1 && pos2) {
-            const arc = createArc(guest.id, partner.id, pos1, pos2)
-            if (arc) {
-              arcs.push({
-                ...arc,
-                label: `Partners: ${guest.firstName} ${guest.lastName} & ${partner.firstName} ${partner.lastName}`
-              })
+            if (pos1 && pos2) {
+              const arc = createArc(guest.id, partner.id, pos1, pos2)
+              if (arc) {
+                arcs.push({
+                  ...arc,
+                  label: `Partners: ${guest.firstName} ${guest.lastName} & ${partner.firstName} ${partner.lastName}`
+                })
+              }
             }
           }
         }
@@ -132,20 +138,26 @@ const relationArcs = computed(() => {
     }
 
     // 2. Child-Parent Arcs
-    if (showParental && guest.isChild && guest.parentId) {
+    if (showParental && guest.isChild && guest.parentId && !guest.isChildrenSeatAdjoining) {
       const parent = guestStore.getById(guest.parentId)
       if (parent) {
         if (!onlySameTable || (guest.tableId && guest.tableId === parent.tableId)) {
-          const pos1 = guestPositions.value.get(guest.id)
-          const pos2 = guestPositions.value.get(parent.id)
+          // Both must be assigned to a table
+          const isGuestAssigned = guestStore.isGuestAssignedToTable(guest)
+          const isParentAssigned = guestStore.isGuestAssignedToTable(parent)
+          
+          if (isGuestAssigned && isParentAssigned) {
+            const pos1 = guestPositions.value.get(guest.id)
+            const pos2 = guestPositions.value.get(parent.id) || (parent.parentId ? guestPositions.value.get(parent.parentId) : null)
 
-          if (pos1 && pos2) {
-            const arc = createArc(guest.id, parent.id, pos1, pos2)
-            if (arc) {
-              arcs.push({
-                ...arc,
-                label: `${guest.firstName} ${guest.lastName} is child of ${parent.firstName} ${parent.lastName}`
-              })
+            if (pos1 && pos2) {
+              const arc = createArc(guest.id, parent.id, pos1, pos2)
+              if (arc) {
+                arcs.push({
+                  ...arc,
+                  label: `${guest.firstName} ${guest.lastName} is child of ${parent.firstName} ${parent.lastName}`
+                })
+              }
             }
           }
         }

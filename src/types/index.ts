@@ -23,6 +23,7 @@ export interface Guest {
   notes: string
   tableId: string | null
   roomId: string | null
+  isChildrenSeatAdjoining?: boolean
   createdAt: string
 }
 

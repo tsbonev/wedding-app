@@ -6,8 +6,17 @@ export const useGuestStore = defineStore('guests', () => {
   const guests = ref<Guest[]>([])
 
   const getById = (id: string) => guests.value.find((g) => g.id === id)
+  const isGuestAssignedToTable = (guest: Guest) => {
+    if (guest.tableId !== null) return true
+    if (guest.isChildrenSeatAdjoining && guest.parentId) {
+      const parent = getById(guest.parentId)
+      return parent ? parent.tableId !== null : false
+    }
+    return false
+  }
+
   const confirmedGuests = computed(() => guests.value.filter((g) => g.rsvpStatus === 'confirmed'))
-  const unassignedGuests = computed(() => guests.value.filter((g) => g.tableId === null && g.rsvpStatus !== 'declined'))
+  const unassignedGuests = computed(() => guests.value.filter((g) => !isGuestAssignedToTable(g) && g.rsvpStatus !== 'declined'))
   const unassignedRoomGuests = computed(() => guests.value.filter((g) => g.roomId === null && g.rsvpStatus !== 'declined'))
 
   function addGuest(payload: Omit<Guest, 'id' | 'createdAt'>) {
@@ -62,5 +71,5 @@ export const useGuestStore = defineStore('guests', () => {
     guests.value = list
   }
 
-  return { guests, getById, confirmedGuests, unassignedGuests, unassignedRoomGuests, addGuest, updateGuest, deleteGuest, bulkReplace }
+  return { guests, getById, isGuestAssignedToTable, confirmedGuests, unassignedGuests, unassignedRoomGuests, addGuest, updateGuest, deleteGuest, bulkReplace }
 }, { persist: true })
