@@ -69,6 +69,7 @@ export interface AppConfig {
   coupleName: string
   weddingDate: string | null
   venue: string
+  guestSidebarWidth?: number
 }
 
 export interface WeddingSnapshot {

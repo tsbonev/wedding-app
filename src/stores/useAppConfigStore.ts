@@ -5,6 +5,9 @@ export const useAppConfigStore = defineStore('config', () => {
   const coupleName = ref('')
   const weddingDate = ref<string | null>(null)
   const venue = ref('')
+  const guestSidebarWidth = ref(280)
+  const showPlusOneLines = ref(true)
+  const showPlusOneLinesOnlySameTable = ref(false)
 
-  return { coupleName, weddingDate, venue }
+  return { coupleName, weddingDate, venue, guestSidebarWidth, showPlusOneLines, showPlusOneLinesOnlySameTable }
 }, { persist: true })

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { Table, SeatOriginCorner } from '@/types'
+import type { Table, SeatOriginCorner, Seat } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import AerialSeatToken from './AerialSeatToken.vue'
 
@@ -35,13 +35,14 @@ const bottomSeats = computed(() => {
   return props.table.seats.slice(half)
 })
 
-const rectBodyWidth = computed(() =>
-  Math.max(topSeats.value.length, 1) * 44 + 24
-)
+const rectBodyWidth = computed(() => {
+  const count = Math.max(topSeats.value.length, 1)
+  return count * 40 + (count - 1) * 4 + 20
+})
 
 // ── Round seat positioning ───────────────────────────────────────────────────
 
-const roundRadius = computed(() => Math.max(70, props.table.seats.length * 10))
+const roundRadius = computed(() => Math.max(50, props.table.seats.length * 8))
 const roundContainerSize = computed(() => 2 * (roundRadius.value + 30))
 
 function seatCircleStyle(index: number) {
@@ -62,9 +63,55 @@ const innerCirclePx = computed(() => {
   return { d, offset }
 })
 
-// ── Seat count label ─────────────────────────────────────────────────────────
+// ── Seat number logic ───────────────────────────────────────────────────────────
 
-const assignedCount = computed(() => props.table.seats.filter(s => s.guestId !== null).length)
+function getDisplaySeatNumber(seat: Seat) {
+  if (!props.table.seatOriginCorner) return seat.index + 1
+  const n = props.table.seats.length
+  const half = Math.ceil(n / 2)
+  const corner = props.table.seatOriginCorner
+  const i = seat.index
+
+  if (props.table.shape === 'rectangular') {
+    let di: number
+    if (corner === 'tl') di = i
+    else if (corner === 'tr') di = i < half ? half - 1 - i : half + (n - 1 - i)
+    else if (corner === 'bl') di = i >= half ? i - half : (n - half) + i
+    else di = n - 1 - i
+    return di + 1
+  } else {
+    const cornerDeg: Record<SeatOriginCorner, number> = { tl: 225, tr: 315, br: 45, bl: 135 }
+    const ca = cornerDeg[corner]
+    let startK = 0; let minDist = Infinity
+    for (let k = 0; k < n; k++) {
+      const deg = ((k / n) * 360 - 90 + 360) % 360
+      let d = Math.abs(deg - ca); if (d > 180) d = 360 - d
+      if (d < minDist) { minDist = d; startK = k }
+    }
+    return ((i - startK + n) % n) + 1
+  }
+}
+
+function seatIndStyle(index: number) {
+  const total = props.table.seats.length
+  const angle = (index / total) * 2 * Math.PI - Math.PI / 2
+  const r = innerCirclePx.value.d / 2 - 10
+  const center = innerCirclePx.value.d / 2
+  return {
+    position: 'absolute' as const,
+    left: `${Math.round(center + r * Math.cos(angle) - 10)}px`,
+    top: `${Math.round(center + r * Math.sin(angle) - 10)}px`,
+    width: '20px',
+    height: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '9px',
+    color: '#9ca3af',
+    fontWeight: '700',
+    pointerEvents: 'none' as const,
+  }
+}
 
 // ── Drag to reposition ────────────────────────────────────────────────────────
 
@@ -177,6 +224,17 @@ function setOrigin(corner: SeatOriginCorner) {
         </div>
 
         <div class="rect-body" :style="{ width: rectBodyWidth + 'px' }">
+          <!-- Seat numbers for top row -->
+          <div class="rect-numbers top">
+            <span
+              v-for="seat in topSeats"
+              :key="`num-${seat.index}`"
+              class="rect-num"
+              :style="{ transform: `rotate(${-table.rotation}deg)` }"
+            >
+              {{ getDisplaySeatNumber(seat) }}
+            </span>
+          </div>
           <!-- Seat-origin corner dots (visible when selected) -->
           <template v-if="isSelected">
             <div
@@ -188,7 +246,17 @@ function setOrigin(corner: SeatOriginCorner) {
           </template>
           <div :style="{ transform: `rotate(${-table.rotation}deg)` }" class="text-container">
             <span class="tname">{{ table.name }}</span>
-            <span class="tdims">({{ assignedCount }}/{{ table.capacity }})</span>
+          </div>
+          <!-- Seat numbers for bottom row -->
+          <div class="rect-numbers bottom">
+            <span
+              v-for="seat in bottomSeats"
+              :key="`num-${seat.index}`"
+              class="rect-num"
+              :style="{ transform: `rotate(${-table.rotation}deg)` }"
+            >
+              {{ getDisplaySeatNumber(seat) }}
+            </span>
           </div>
         </div>
 
@@ -228,8 +296,15 @@ function setOrigin(corner: SeatOriginCorner) {
           </template>
           <div :style="{ transform: `rotate(${-table.rotation}deg)` }" class="text-container">
             <span class="tname">{{ table.name }}</span>
-            <span class="tdims">({{ assignedCount }}/{{ table.capacity }})</span>
           </div>
+          <span
+            v-for="(seat, idx) in table.seats"
+            :key="`rnum-${seat.index}`"
+            class="round-num"
+            :style="{ ...seatIndStyle(idx), transform: `rotate(${-table.rotation}deg)` }"
+          >
+            {{ getDisplaySeatNumber(seat) }}
+          </span>
         </div>
 
         <AerialSeatToken
@@ -319,8 +394,8 @@ function setOrigin(corner: SeatOriginCorner) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
-  min-height: 52px;
+  padding: 12px 10px;
+  min-height: 64px;
   gap: 2px;
   box-sizing: border-box;
   position: relative;
@@ -362,5 +437,31 @@ function setOrigin(corner: SeatOriginCorner) {
   font-size: 10px;
   color: #6b7280;
   line-height: 1.2;
+}
+.round-num {
+  pointer-events: none;
+}
+.rect-numbers {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  transition: transform 0.2s ease;
+}
+.rect-numbers.top { top: 2px; }
+.rect-numbers.bottom { bottom: 2px; }
+.rect-num {
+  width: 40px;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #9ca3af;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
 }
 </style>

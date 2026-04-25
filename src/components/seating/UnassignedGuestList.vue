@@ -1,26 +1,22 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { NText } from 'naive-ui'
+import { NText, NCheckbox } from 'naive-ui'
 import type { Guest } from '@/types'
 import { useGroupStore } from '@/stores/useGroupStore'
+import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
 
 defineProps<{ guests: Guest[] }>()
 
 const groupStore = useGroupStore()
-
-// ── Drag-to-resize ────────────────────────────────────────────────────────────
-
-const width = ref(220)
+const configStore = useAppConfigStore()
 
 function onResizeStart(event: MouseEvent) {
   event.preventDefault()
   const startX = event.clientX
-  const startWidth = width.value
+  const startWidth = configStore.guestSidebarWidth
 
   function onMove(e: MouseEvent) {
-    // handle is on the left edge: dragging left = wider
-    width.value = Math.max(160, Math.min(500, startWidth + (startX - e.clientX)))
+    configStore.guestSidebarWidth = Math.max(160, Math.min(500, startWidth + (startX - e.clientX)))
   }
   function onUp() {
     window.removeEventListener('mousemove', onMove)
@@ -29,8 +25,6 @@ function onResizeStart(event: MouseEvent) {
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)
 }
-
-// ── Drag-to-assign ────────────────────────────────────────────────────────────
 
 function onDragStart(event: DragEvent, guest: Guest) {
   event.dataTransfer?.setData('guestId', guest.id)
@@ -46,43 +40,60 @@ function groupColor(guest: Guest) {
 </script>
 
 <template>
-  <div class="unassigned-list" :style="{ width: width + 'px' }">
+  <div class="unassigned-list" :style="{ width: configStore.guestSidebarWidth + 'px' }">
     <div class="resize-handle" @mousedown="onResizeStart" />
-    <n-text depth="2" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 8px;">
-      Unassigned ({{ guests.length }})
-    </n-text>
-    <div
-      v-for="guest in guests"
-      :key="guest.id"
-      class="guest-chip"
-      :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px' } : {}"
-      draggable="true"
-      @dragstart="onDragStart($event, guest)"
-    >
-      <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0">
-        <span
-          v-if="groupColor(guest)"
-          :style="`width:8px; height:8px; border-radius:50%; background:${groupColor(guest)}; flex-shrink:0`"
-        />
-        <span class="guest-name">{{ guest.firstName }} {{ guest.lastName }}</span>
+    <div class="list-content">
+      <n-text depth="2" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 8px;">
+        Unassigned ({{ guests.length }})
+      </n-text>
+      <div
+        v-for="guest in guests"
+        :key="guest.id"
+        class="guest-chip"
+        :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px' } : {}"
+        draggable="true"
+        @dragstart="onDragStart($event, guest)"
+      >
+        <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0">
+          <span
+            v-if="groupColor(guest)"
+            :style="`width:8px; height:8px; border-radius:50%; background:${groupColor(guest)}; flex-shrink:0`"
+          />
+          <span class="guest-name">{{ guest.firstName }} {{ guest.lastName }}</span>
+        </div>
+        <RSVPBadge :status="guest.rsvpStatus" />
       </div>
-      <RSVPBadge :status="guest.rsvpStatus" />
+      <n-text v-if="guests.length === 0" depth="3" style="font-size: 12px;">All guests assigned 🎉</n-text>
     </div>
-    <n-text v-if="guests.length === 0" depth="3" style="font-size: 12px;">All guests assigned 🎉</n-text>
+    <div class="sidebar-footer">
+      <n-checkbox :checked="configStore.showPlusOneLines ?? true" @update:checked="configStore.showPlusOneLines = $event">
+        Show plus-one lines
+      </n-checkbox>
+      <div v-if="configStore.showPlusOneLines ?? true" style="margin-top: 8px; margin-left: 24px;">
+        <n-checkbox :checked="configStore.showPlusOneLinesOnlySameTable ?? false" @update:checked="configStore.showPlusOneLinesOnlySameTable = $event">
+          <span style="font-size: 12px">Only if on same table</span>
+        </n-checkbox>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .unassigned-list {
   flex-shrink: 0;
-  padding: 12px 12px 12px 14px;
   background: #fafafa;
   border: 1px solid #eee;
   border-radius: 8px;
   max-height: calc(100vh - 120px);
-  overflow-y: auto;
   position: relative;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.list-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 12px 12px 14px;
 }
 .resize-handle {
   position: absolute;
@@ -115,5 +126,12 @@ function groupColor(guest: Guest) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px 14px;
+  border-top: 1px solid #eee;
+  background: #fafafa;
+  border-radius: 0 0 8px 8px;
 }
 </style>

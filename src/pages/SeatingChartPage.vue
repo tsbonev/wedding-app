@@ -3,14 +3,17 @@ import { ref, computed } from 'vue'
 import { NButton, NTabs, NTabPane } from 'naive-ui'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGuestStore } from '@/stores/useGuestStore'
+import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import TableCard from '@/components/seating/TableCard.vue'
 import AerialTableView from '@/components/seating/AerialTableView.vue'
 import UnassignedGuestList from '@/components/seating/UnassignedGuestList.vue'
+import PlusOneArcs from '@/components/seating/PlusOneArcs.vue'
 import AddTableModal from '@/components/seating/AddTableModal.vue'
 import EmptyState from '@/components/shared/EmptyState.vue'
 
 const seatingStore = useSeatingStore()
 const guestStore = useGuestStore()
+const configStore = useAppConfigStore()
 
 const activeTab = ref<'tables' | 'floorplan'>('tables')
 const showAddModal = ref(false)
@@ -32,18 +35,20 @@ const sortedTables = computed(() =>
 
       <!-- ── Tables tab ─────────────────────────────────────────────────────── -->
       <n-tab-pane name="tables" tab="Tables">
-        <EmptyState
-          v-if="seatingStore.tables.length === 0"
-          icon="🪑" title="No tables yet"
-          description="Click '+ Add Table' to start laying out your seating."
-        />
-        <div v-else style="display: flex; gap: 16px; align-items: flex-start;">
-          <div class="tables-grid">
-            <TableCard
-              v-for="table in sortedTables" :key="table.id"
-              :table="table"
-              @delete="seatingStore.deleteTable($event)"
+        <div style="display: flex; gap: 16px; align-items: flex-start;">
+          <div style="flex: 1;">
+            <EmptyState
+              v-if="seatingStore.tables.length === 0"
+              icon="🪑" title="No tables yet"
+              description="Click '+ Add Table' to start laying out your seating."
             />
+            <div v-else class="tables-grid">
+              <TableCard
+                v-for="table in sortedTables" :key="table.id"
+                :table="table"
+                @delete="seatingStore.deleteTable($event)"
+              />
+            </div>
           </div>
           <UnassignedGuestList :guests="unassigned" />
         </div>
@@ -62,6 +67,7 @@ const sortedTables = computed(() =>
               v-for="table in seatingStore.tables" :key="table.id"
               :table="table"
             />
+            <PlusOneArcs v-if="configStore.showPlusOneLines ?? true" />
           </div>
           <UnassignedGuestList :guests="unassigned" />
         </div>

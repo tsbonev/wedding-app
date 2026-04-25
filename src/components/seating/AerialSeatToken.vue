@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, h } from 'vue'
-import { NTooltip, NPopover, NSelect } from 'naive-ui'
+import { NTooltip, NSelect } from 'naive-ui'
 import type { SelectOption } from 'naive-ui'
 import type { SeatOriginCorner } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
@@ -20,13 +20,20 @@ const groupStore = useGroupStore()
 const menuStore = useMenuStore()
 const seatingStore = useSeatingStore()
 
-const showPopover = ref(false)
+const showDropdown = ref(false)
 const selectRef = ref<InstanceType<typeof NSelect> | null>(null)
 
-watch(showPopover, async (val) => {
+watch(showDropdown, async (val) => {
   if (val) {
     await nextTick()
-    selectRef.value?.focus()
+    setTimeout(() => {
+      const input = selectRef.value?.$el?.querySelector('input')
+      if (input) {
+        input.focus()
+      } else {
+        selectRef.value?.focus()
+      }
+    }, 150)
   }
 })
 
@@ -62,18 +69,15 @@ const displaySeatNumber = computed(() => {
     if (corner === 'tl') di = i
     else if (corner === 'tr') di = i < half ? half - 1 - i : half + (n - 1 - i)
     else if (corner === 'bl') di = i >= half ? i - half : (n - half) + i
-    else di = n - 1 - i // br
+    else di = n - 1 - i
     return di + 1
   } else {
-    // round: find the seat whose physical angle is closest to the corner direction, then offset
     const cornerDeg: Record<SeatOriginCorner, number> = { tl: 225, tr: 315, br: 45, bl: 135 }
     const ca = cornerDeg[corner]
-    let startK = 0
-    let minDist = Infinity
+    let startK = 0; let minDist = Infinity
     for (let k = 0; k < n; k++) {
       const deg = ((k / n) * 360 - 90 + 360) % 360
-      let d = Math.abs(deg - ca)
-      if (d > 180) d = 360 - d
+      let d = Math.abs(deg - ca); if (d > 180) d = 360 - d
       if (d < minDist) { minDist = d; startK = k }
     }
     return ((i - startK + n) % n) + 1
@@ -82,17 +86,13 @@ const displaySeatNumber = computed(() => {
 
 // ── Assign dropdown ───────────────────────────────────────────────────────────
 
-const selectOptions = computed(() => {
-  const opts: (SelectOption & { color?: string | null })[] = guestStore.unassignedGuests.map(g => ({
+const selectOptions = computed((): (SelectOption & { color?: string | null })[] =>
+  guestStore.unassignedGuests.map(g => ({
     label: `${g.firstName} ${g.lastName}`,
     value: g.id,
     color: g.groupId ? (groupStore.getById(g.groupId)?.color ?? null) : null,
   }))
-  if (props.guestId) {
-    opts.unshift({ label: '— Unassign —', value: '__unassign__', color: null })
-  }
-  return opts
-})
+)
 
 function renderSelectLabel(option: SelectOption & { color?: string | null }) {
   return h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
@@ -101,6 +101,20 @@ function renderSelectLabel(option: SelectOption & { color?: string | null }) {
     }),
     h('span', {}, option.label as string),
   ])
+}
+
+function openDropdown() {
+  if (selectOptions.value.length === 0) return
+  showDropdown.value = true
+}
+
+function onSelectGuest(val: string) {
+  seatingStore.assignGuest(props.tableId, props.seatIndex, val)
+  showDropdown.value = false
+}
+
+function onSelectUpdateShow(val: boolean) {
+  if (!val) showDropdown.value = false
 }
 
 // ── Drag and drop ─────────────────────────────────────────────────────────────
@@ -144,75 +158,77 @@ function onDrop(event: DragEvent) {
 function unassign() {
   if (props.guestId) seatingStore.unassignGuest(props.guestId)
 }
-
-function onSelectGuest(val: string) {
-  if (val === '__unassign__') {
-    unassign()
-  } else {
-    seatingStore.assignGuest(props.tableId, props.seatIndex, val)
-  }
-  showPopover.value = false
-}
 </script>
 
 <template>
-  <n-popover v-model:show="showPopover" trigger="click" placement="top" :keep-alive-on-hover="false">
-    <template #trigger>
-      <n-tooltip trigger="hover" :disabled="!guest || showPopover" placement="top" :keep-alive-on-hover="false">
-        <template #trigger>
+  <div class="seat-wrapper">
+    <n-tooltip trigger="hover" :disabled="!guest || showDropdown" placement="top" :keep-alive-on-hover="false">
+      <template #trigger>
+        <div
+          class="seat-token"
+          :class="{
+            'is-occupied': !!guest,
+            'is-empty': !guest,
+            'is-drag-over': isDragOver,
+          }"
+          :data-guest-id="guestId"
+          :style="guest && groupColor ? { background: groupColor } : {}"
+          :draggable="!!guest"
+          @click="openDropdown"
+          @dragstart="onDragStart"
+          @dragover="onDragOver"
+          @dragleave="onDragLeave"
+          @drop="onDrop"
+          @contextmenu.prevent="unassign"
+        >
           <div
-            class="seat-token"
-            :class="{
-              'is-occupied': !!guest,
-              'is-empty': !guest,
-              'is-drag-over': isDragOver,
-            }"
-            :style="guest && groupColor ? { background: groupColor } : {}"
-            :draggable="!!guest"
-            @dragstart="onDragStart"
-            @dragover="onDragOver"
-            @dragleave="onDragLeave"
-            @drop="onDrop"
-            @contextmenu.prevent="unassign"
+            class="seat-content"
+            :style="rotation ? { transform: `rotate(${-rotation}deg)` } : {}"
           >
-            <div
-              class="seat-content"
-              :style="rotation ? { transform: `rotate(${-rotation}deg)` } : {}"
-            >
-              <span v-if="guest" class="initials">{{ initials }}</span>
-              <span v-else class="seat-num">{{ displaySeatNumber }}</span>
+            <div v-if="guest" class="seat-guest-info">
+              <span class="initials">{{ initials }}</span>
             </div>
+            <span v-else class="seat-num">{{ displaySeatNumber }}</span>
           </div>
-        </template>
-
-        <div v-if="guest" class="seat-tooltip">
-          <div class="tooltip-name">{{ fullName }}</div>
-          <div v-if="groupInfo" class="tooltip-row">
-            <span class="group-dot" :style="{ background: groupInfo.color }" />
-            {{ groupInfo.name }}
-          </div>
-          <div v-if="mealOption" class="tooltip-row">{{ mealOption.emoji }} {{ mealOption.label }}</div>
-          <div v-if="guest.dietaryNotes" class="tooltip-row tooltip-diet">{{ guest.dietaryNotes }}</div>
         </div>
-      </n-tooltip>
-    </template>
+      </template>
 
-    <div style="width: 220px;">
+      <div v-if="guest" class="seat-tooltip">
+        <div class="tooltip-name">{{ fullName }}</div>
+        <div v-if="groupInfo" class="tooltip-row">
+          <span class="group-dot" :style="{ background: groupInfo.color }" />
+          {{ groupInfo.name }}
+        </div>
+        <div v-if="mealOption" class="tooltip-row">{{ mealOption.emoji }} {{ mealOption.label }}</div>
+        <div v-if="guest.dietaryNotes" class="tooltip-row tooltip-diet">{{ guest.dietaryNotes }}</div>
+      </div>
+    </n-tooltip>
+
+    <!-- Dropdown overlay: appears on top of the token, anchors NSelect for positioning -->
+    <div
+      v-if="showDropdown"
+      class="assign-overlay"
+      :style="rotation ? { transform: `translateX(-50%) rotate(${-rotation}deg)` } : {}"
+    >
       <n-select
         ref="selectRef"
         :value="null"
         filterable
-        :show="showPopover"
-        placeholder="Assign guest…"
+        :show="true"
         :options="selectOptions"
         :render-label="renderSelectLabel"
         @update:value="onSelectGuest"
+        @update:show="onSelectUpdateShow"
       />
     </div>
-  </n-popover>
+  </div>
 </template>
 
 <style scoped>
+.seat-wrapper {
+  position: relative;
+  display: inline-flex;
+}
 .seat-token {
   width: 40px;
   height: 40px;
@@ -240,7 +256,6 @@ function onSelectGuest(val: string) {
   color: #fff;
   cursor: grab;
   border-color: transparent;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   font-size: 13px;
 }
 .is-occupied:hover {
@@ -270,8 +285,30 @@ function onSelectGuest(val: string) {
   outline-offset: 2px;
 }
 .initials {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   letter-spacing: 0.5px;
+}
+.seat-guest-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.seat-num-small {
+  font-size: 11px;
+  opacity: 1;
+  font-weight: 700;
+  margin-bottom: -1px;
+}
+
+/* Dropdown overlay — centered on the token, wide enough for names */
+.assign-overlay {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  z-index: 100;
 }
 
 /* Tooltip */
@@ -284,11 +321,6 @@ function onSelectGuest(val: string) {
   font-size: 12px;
   line-height: 1.6;
 }
-.group-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+.group-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .tooltip-diet { color: #9ca3af; font-style: italic; }
 </style>

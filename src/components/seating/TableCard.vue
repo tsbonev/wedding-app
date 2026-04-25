@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { NCard, NTag, NButton, NPopconfirm, NInputNumber, NSpace, NInput } from 'naive-ui'
+import { computed, ref, watch } from 'vue'
+import { NCard, NButton, NPopconfirm, NInputNumber, NSpace, NInput, useDialog } from 'naive-ui'
 import type { Table, SeatOriginCorner } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import SeatBadge from './SeatBadge.vue'
@@ -8,14 +8,50 @@ import SeatBadge from './SeatBadge.vue'
 const props = defineProps<{ table: Table }>()
 const emit = defineEmits<{ (e: 'delete', id: string): void }>()
 const seatingStore = useSeatingStore()
+const dialog = useDialog()
+const isConfirming = ref(false)
+const localCapacity = ref(props.table.capacity)
+
+watch(() => props.table.capacity, (newVal) => {
+  localCapacity.value = newVal
+})
 
 function updateDim(key: 'widthCm' | 'lengthCm', val: number | null) {
   seatingStore.updateTable(props.table.id, { [key]: val })
 }
 
-function updateCapacity(val: number | null) {
-  if (val === null || val < 1) return
-  seatingStore.resizeTable(props.table.id, val)
+function updateCapacity() {
+  const val = localCapacity.value
+  if (val === null || val < 1 || isConfirming.value) return
+  
+  const assignedGuestsCount = props.table.seats.filter(s => s.guestId !== null).length
+  if (val < assignedGuestsCount) {
+    isConfirming.value = true
+    dialog.warning({
+      title: 'Confirm Capacity Change',
+      content: `Reducing capacity to ${val} will unassign ${assignedGuestsCount - val} guests. Are you sure?`,
+      positiveText: 'Confirm',
+      negativeText: 'Cancel',
+      onPositiveClick: () => {
+        seatingStore.resizeTable(props.table.id, val)
+        isConfirming.value = false
+      },
+      onNegativeClick: () => {
+        localCapacity.value = props.table.capacity
+        isConfirming.value = false
+      },
+      onClose: () => {
+        localCapacity.value = props.table.capacity
+        isConfirming.value = false
+      },
+      onMaskClick: () => {
+        localCapacity.value = props.table.capacity
+        isConfirming.value = false
+      }
+    })
+  } else {
+    seatingStore.resizeTable(props.table.id, val)
+  }
 }
 
 function displayIndex(seatIndex: number): number {
@@ -57,8 +93,47 @@ const sortedSeats = computed(() =>
       />
     </template>
     <template #header-extra>
-      <n-tag size="small">{{ table.shape === 'round' ? '⭕' : '⬜' }} {{ table.capacity }}</n-tag>
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <span style="font-size: 16px;">{{ table.shape === 'round' ? '⭕' : '⬜' }}</span>
+        <n-input-number
+          v-model:value="localCapacity"
+          size="tiny"
+          :min="1"
+          :max="40"
+          :show-button="false"
+          style="width: 40px;"
+          @blur="updateCapacity"
+          @keyup.enter="updateCapacity"
+        />
+      </div>
     </template>
+
+    <div class="table-dims-edit-top">
+      <n-space size="small">
+        <div v-if="table.shape === 'rectangular'">
+          <div class="dim-label">Length</div>
+          <n-input-number
+            :value="table.lengthCm"
+            size="tiny"
+            placeholder="Len"
+            :show-button="false"
+            style="width: 50px"
+            @update:value="updateDim('lengthCm', $event)"
+          />
+        </div>
+        <div>
+          <div class="dim-label">{{ table.shape === 'rectangular' ? 'Width' : 'Diam' }}</div>
+          <n-input-number
+            :value="table.widthCm"
+            size="tiny"
+            placeholder="Wid"
+            :show-button="false"
+            style="width: 50px"
+            @update:value="updateDim('widthCm', $event)"
+          />
+        </div>
+      </n-space>
+    </div>
 
     <SeatBadge
       v-for="seat in sortedSeats"
@@ -67,39 +142,6 @@ const sortedSeats = computed(() =>
       :seat-index="seat.index"
       :guest-id="seat.guestId"
     />
-
-    <div class="table-dims-edit">
-      <n-space vertical size="small">
-        <div>
-          <div class="dim-label">Seats</div>
-          <n-input-number
-            :value="table.capacity"
-            size="tiny"
-            :min="1"
-            :max="40"
-            @update:value="updateCapacity($event)"
-          />
-        </div>
-        <div v-if="table.shape === 'rectangular'">
-          <div class="dim-label">Length (cm)</div>
-          <n-input-number
-            :value="table.lengthCm"
-            size="tiny"
-            placeholder="Len"
-            @update:value="updateDim('lengthCm', $event)"
-          />
-        </div>
-        <div>
-          <div class="dim-label">{{ table.shape === 'rectangular' ? 'Width' : 'Diameter' }} (cm)</div>
-          <n-input-number
-            :value="table.widthCm"
-            size="tiny"
-            placeholder="Wid"
-            @update:value="updateDim('widthCm', $event)"
-          />
-        </div>
-      </n-space>
-    </div>
 
     <template #action>
       <n-popconfirm @positive-click="emit('delete', table.id)">
@@ -113,10 +155,10 @@ const sortedSeats = computed(() =>
 </template>
 
 <style scoped>
-.table-dims-edit {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed #e2e8f0;
+.table-dims-edit-top {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #e2e8f0;
 }
 .dim-label {
   font-size: 10px;

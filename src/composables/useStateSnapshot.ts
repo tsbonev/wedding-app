@@ -20,6 +20,7 @@ export function useStateSnapshot() {
       coupleName: toRaw(configStore.coupleName),
       weddingDate: toRaw(configStore.weddingDate),
       venue: toRaw(configStore.venue),
+      guestSidebarWidth: toRaw(configStore.guestSidebarWidth),
     }
 
     const snapshot: WeddingSnapshot = {
@@ -68,6 +69,7 @@ export function useStateSnapshot() {
             configStore.coupleName = snapshot.config.coupleName ?? ''
             configStore.weddingDate = snapshot.config.weddingDate ?? null
             configStore.venue = snapshot.config.venue ?? ''
+            if (snapshot.config.guestSidebarWidth) configStore.guestSidebarWidth = snapshot.config.guestSidebarWidth
           }
           menuStore.bulkReplace(snapshot.menuOptions)
           if (snapshot.groups) groupStore.bulkReplace(snapshot.groups)

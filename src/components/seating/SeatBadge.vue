@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, h } from 'vue'
-import { NPopover, NSelect } from 'naive-ui'
+import { NSelect } from 'naive-ui'
 import type { SelectOption } from 'naive-ui'
 import type { SeatOriginCorner } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
@@ -17,13 +17,20 @@ const guestStore = useGuestStore()
 const seatingStore = useSeatingStore()
 const groupStore = useGroupStore()
 
-const showPopover = ref(false)
+const showDropdown = ref(false)
 const selectRef = ref<InstanceType<typeof NSelect> | null>(null)
 
-watch(showPopover, async (val) => {
+watch(showDropdown, async (val) => {
   if (val) {
     await nextTick()
-    selectRef.value?.focus()
+    setTimeout(() => {
+      const input = selectRef.value?.$el?.querySelector('input')
+      if (input) {
+        input.focus()
+      } else {
+        selectRef.value?.focus()
+      }
+    }, 150)
   }
 })
 
@@ -34,7 +41,7 @@ const groupColor = computed(() => {
   return groupStore.getById(guest.value.groupId)?.color ?? null
 })
 
-// ── Display seat number based on origin corner ────────────────────────────────
+// ── Display seat number ───────────────────────────────────────────────────────
 
 const displaySeatNumber = computed(() => {
   const table = seatingStore.getById(props.tableId)
@@ -49,17 +56,15 @@ const displaySeatNumber = computed(() => {
     if (corner === 'tl') di = i
     else if (corner === 'tr') di = i < half ? half - 1 - i : half + (n - 1 - i)
     else if (corner === 'bl') di = i >= half ? i - half : (n - half) + i
-    else di = n - 1 - i // br
+    else di = n - 1 - i
     return di + 1
   } else {
     const cornerDeg: Record<SeatOriginCorner, number> = { tl: 225, tr: 315, br: 45, bl: 135 }
     const ca = cornerDeg[corner]
-    let startK = 0
-    let minDist = Infinity
+    let startK = 0; let minDist = Infinity
     for (let k = 0; k < n; k++) {
       const deg = ((k / n) * 360 - 90 + 360) % 360
-      let d = Math.abs(deg - ca)
-      if (d > 180) d = 360 - d
+      let d = Math.abs(deg - ca); if (d > 180) d = 360 - d
       if (d < minDist) { minDist = d; startK = k }
     }
     return ((i - startK + n) % n) + 1
@@ -85,63 +90,110 @@ function renderSelectLabel(option: SelectOption & { color?: string | null }) {
   ])
 }
 
-function onDrop(event: DragEvent) {
-  event.preventDefault()
-  const guestId = event.dataTransfer?.getData('guestId')
-  if (guestId) seatingStore.assignGuest(props.tableId, props.seatIndex, guestId)
+function openDropdown() {
+  if (selectOptions.value.length === 0) return
+  showDropdown.value = true
+}
+
+function onSelectGuest(val: string) {
+  seatingStore.assignGuest(props.tableId, props.seatIndex, val)
+  showDropdown.value = false
+}
+
+function onSelectUpdateShow(val: boolean) {
+  if (!val) showDropdown.value = false
+}
+
+const isDragOver = ref(false)
+
+function onDragStart(event: DragEvent) {
+  if (!guest.value) return
+  event.stopPropagation()
+  event.dataTransfer!.setData('guestId', guest.value.id)
+  event.dataTransfer!.setData('text/plain', guest.value.id) // Fallback
+  event.dataTransfer!.setData('sourceTableId', props.tableId)
+  event.dataTransfer!.setData('sourceSeatIndex', String(props.seatIndex))
+  event.dataTransfer!.effectAllowed = 'move'
+  const badge = event.currentTarget as HTMLElement
+  const rect = badge.getBoundingClientRect()
+  event.dataTransfer!.setDragImage(badge, event.clientX - rect.left, event.clientY - rect.top)
 }
 
 function onDragOver(event: DragEvent) {
   event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  isDragOver.value = true
+}
+
+function onDragLeave() {
+  isDragOver.value = false
+}
+
+function onDrop(event: DragEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  isDragOver.value = false
+  const guestId = event.dataTransfer!.getData('guestId') || event.dataTransfer!.getData('text/plain')
+  if (!guestId) return
+  const sourceTableId = event.dataTransfer!.getData('sourceTableId')
+  const sourceSeatIndexStr = event.dataTransfer!.getData('sourceSeatIndex')
+  if (sourceTableId && sourceSeatIndexStr !== '') {
+    seatingStore.swapSeats(sourceTableId, parseInt(sourceSeatIndexStr), props.tableId, props.seatIndex)
+  } else {
+    seatingStore.assignGuest(props.tableId, props.seatIndex, guestId)
+  }
 }
 
 function unassign() {
   if (props.guestId) seatingStore.unassignGuest(props.guestId)
 }
-
-function onSelectGuest(val: string) {
-  seatingStore.assignGuest(props.tableId, props.seatIndex, val)
-  showPopover.value = false
-}
 </script>
 
 <template>
-  <n-popover v-model:show="showPopover" trigger="click" placement="top" :keep-alive-on-hover="false">
-    <template #trigger>
-      <div
-        class="seat-badge"
-        :class="{ occupied: !!guest, empty: !guest }"
-        :style="groupColor ? { borderLeftColor: groupColor, borderLeftWidth: '3px', borderLeftStyle: 'solid', background: groupColor + '18' } : {}"
-        @drop="onDrop"
-        @dragover="onDragOver"
-      >
-        <template v-if="guest">
-          <span v-if="groupColor" class="group-dot" :style="{ background: groupColor }" :title="groupStore.getById(guest.groupId!)?.name" />
-          <span class="guest-name">{{ guest.firstName }} {{ guest.lastName[0] }}.</span>
-          <button class="unassign-btn" title="Unassign" @click.stop="unassign">×</button>
-        </template>
-        <template v-else>
-          <span class="empty-label">Seat {{ displaySeatNumber }}</span>
-        </template>
-      </div>
-    </template>
+  <div class="seat-badge-wrapper">
+    <div
+      class="seat-badge"
+      :class="{ occupied: !!guest, empty: !guest, 'is-drag-over': isDragOver }"
+      :style="groupColor ? { borderLeftColor: groupColor, borderLeftWidth: '3px', borderLeftStyle: 'solid', background: groupColor + '18' } : {}"
+      :draggable="!!guest"
+      @click="openDropdown"
+      @dragstart="onDragStart"
+      @dragover="onDragOver"
+      @dragleave="onDragLeave"
+      @drop="onDrop"
+    >
+      <template v-if="guest">
+        <span v-if="groupColor" class="group-dot" :style="{ background: groupColor }" :title="groupStore.getById(guest.groupId!)?.name" />
+        <span class="guest-name"><strong class="seat-num-badge">{{ displaySeatNumber }}</strong>. {{ guest.firstName }} {{ guest.lastName[0] }}.</span>
+        <button class="unassign-btn" title="Unassign" @click.stop="unassign">×</button>
+      </template>
+      <template v-else>
+        <span class="empty-label">Seat {{ displaySeatNumber }}</span>
+      </template>
+    </div>
 
-    <div style="width: 220px;">
+    <!-- Dropdown overlay: full width of the badge, appears on top -->
+    <div v-if="showDropdown" class="assign-overlay">
       <n-select
         ref="selectRef"
         :value="null"
         filterable
-        :show="showPopover"
-        placeholder="Assign guest…"
+        :show="true"
         :options="selectOptions"
         :render-label="renderSelectLabel"
         @update:value="onSelectGuest"
+        @update:show="onSelectUpdateShow"
       />
     </div>
-  </n-popover>
+  </div>
 </template>
 
 <style scoped>
+.seat-badge-wrapper {
+  position: relative;
+}
 .seat-badge {
   display: flex;
   align-items: center;
@@ -157,6 +209,10 @@ function onSelectGuest(val: string) {
 .occupied {
   border-color: #86efac;
   border-style: solid;
+  cursor: grab;
+}
+.occupied:active {
+  cursor: grabbing;
 }
 .empty {
   background: #fafafa;
@@ -167,6 +223,11 @@ function onSelectGuest(val: string) {
   border-color: #93c5fd;
   color: #3b82f6;
 }
+.is-drag-over {
+  background: #f0f9ff !important;
+  border-color: #3b82f6 !important;
+  border-style: solid !important;
+}
 .group-dot {
   width: 8px;
   height: 8px;
@@ -176,6 +237,10 @@ function onSelectGuest(val: string) {
   margin-right: 4px;
 }
 .guest-name { flex: 1; }
+.seat-num-badge {
+  font-size: 14px;
+  margin-right: 2px;
+}
 .unassign-btn {
   background: none;
   border: none;
@@ -186,4 +251,14 @@ function onSelectGuest(val: string) {
   padding: 0 2px;
 }
 .unassign-btn:hover { color: #e03030; }
+
+/* Dropdown overlay: covers the badge, full width */
+.assign-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  min-width: 160px;
+}
 </style>
