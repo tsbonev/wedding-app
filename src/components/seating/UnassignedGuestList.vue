@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { NText } from 'naive-ui'
 import type { Guest } from '@/types'
+import { useGroupStore } from '@/stores/useGroupStore'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
 
 defineProps<{ guests: Guest[] }>()
 
+const groupStore = useGroupStore()
+
 function onDragStart(event: DragEvent, guest: Guest) {
   event.dataTransfer?.setData('guestId', guest.id)
+}
+
+function groupColor(guest: Guest) {
+  if (!guest.groupId) return null
+  return groupStore.getById(guest.groupId)?.color ?? null
 }
 </script>
 
@@ -19,10 +27,19 @@ function onDragStart(event: DragEvent, guest: Guest) {
       v-for="guest in guests"
       :key="guest.id"
       class="guest-chip"
+      :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px' } : {}"
       draggable="true"
       @dragstart="onDragStart($event, guest)"
     >
-      <span>{{ guest.firstName }} {{ guest.lastName }}</span>
+      <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0">
+        <span
+          v-if="groupColor(guest)"
+          :style="`width:8px; height:8px; border-radius:50%; background:${groupColor(guest)}; flex-shrink:0`"
+        />
+        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+          {{ guest.firstName }} {{ guest.lastName }}
+        </span>
+      </div>
       <RSVPBadge :status="guest.rsvpStatus" />
     </div>
     <n-text v-if="guests.length === 0" depth="3" style="font-size: 12px;">All guests assigned 🎉</n-text>

@@ -8,14 +8,21 @@ export const useSeatingStore = defineStore('seating', () => {
 
   const getById = (id: string) => tables.value.find((t) => t.id === id)
 
-  function addTable(payload: { name: string; shape: TableShape; capacity: number }) {
+  function addTable(payload: { name: string; shape: TableShape; capacity: number; widthCm?: number | null; lengthCm?: number | null }) {
     const seats = Array.from({ length: payload.capacity }, (_, i) => ({ index: i, guestId: null as string | null }))
     tables.value.push({
       id: crypto.randomUUID(),
-      ...payload,
+      name: payload.name,
+      shape: payload.shape,
+      capacity: payload.capacity,
+      widthCm: payload.widthCm ?? null,
+      lengthCm: payload.lengthCm ?? null,
       seats,
       posX: 50 + tables.value.length * 20,
       posY: 50 + tables.value.length * 20,
+      aerialPosX: 50 + tables.value.length * 20,
+      aerialPosY: 50 + tables.value.length * 20,
+      rotation: 0,
     })
   }
 
@@ -54,9 +61,31 @@ export const useSeatingStore = defineStore('seating', () => {
     guestStore.updateGuest(guestId, { tableId: null })
   }
 
-  function bulkReplace(list: Table[]) {
-    tables.value = list
+  function swapSeats(fromTableId: string, fromSeatIndex: number, toTableId: string, toSeatIndex: number) {
+    if (fromTableId === toTableId && fromSeatIndex === toSeatIndex) return
+    const guestStore = useGuestStore()
+    const fromTable = tables.value.find((t) => t.id === fromTableId)
+    const toTable = tables.value.find((t) => t.id === toTableId)
+    if (!fromTable || !toTable) return
+    const fromSeat = fromTable.seats.find((s) => s.index === fromSeatIndex)
+    const toSeat = toTable.seats.find((s) => s.index === toSeatIndex)
+    if (!fromSeat || !toSeat) return
+    const fromGuestId = fromSeat.guestId
+    const toGuestId = toSeat.guestId
+    fromSeat.guestId = toGuestId
+    toSeat.guestId = fromGuestId
+    if (fromGuestId) guestStore.updateGuest(fromGuestId, { tableId: toTableId })
+    if (toGuestId) guestStore.updateGuest(toGuestId, { tableId: fromTableId })
   }
 
-  return { tables, getById, addTable, updateTable, deleteTable, assignGuest, unassignGuest, bulkReplace }
+  function bulkReplace(list: Table[]) {
+    tables.value = list.map(t => ({
+      rotation: 0,
+      aerialPosX: t.aerialPosX ?? t.posX,
+      aerialPosY: t.aerialPosY ?? t.posY,
+      ...t
+    }))
+  }
+
+  return { tables, getById, addTable, updateTable, deleteTable, assignGuest, unassignGuest, swapSeats, bulkReplace }
 }, { persist: true })

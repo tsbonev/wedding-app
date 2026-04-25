@@ -1,5 +1,11 @@
 export type RSVPStatus = 'pending' | 'confirmed' | 'declined'
 
+export interface GuestGroup {
+  id: string
+  name: string
+  color: string
+}
+
 export interface Guest {
   id: string
   firstName: string
@@ -10,6 +16,7 @@ export interface Guest {
   mealChoiceId: string | null
   dietaryNotes: string
   plusOneOf: string | null
+  groupId: string | null
   notes: string
   tableId: string | null
   roomId: string | null
@@ -28,9 +35,14 @@ export interface Table {
   name: string
   shape: TableShape
   capacity: number
+  widthCm: number | null
+  lengthCm: number | null
   seats: Seat[]
   posX: number
   posY: number
+  aerialPosX: number
+  aerialPosY: number
+  rotation: number
 }
 
 export interface Room {
@@ -64,4 +76,5 @@ export interface WeddingSnapshot {
   tables: Table[]
   rooms: Room[]
   menuOptions: MenuItem[]
+  groups: GuestGroup[]
 }

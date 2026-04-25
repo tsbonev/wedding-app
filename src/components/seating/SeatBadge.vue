@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
+import { useGroupStore } from '@/stores/useGroupStore'
 import type { Guest } from '@/types'
 
 const props = defineProps<{
@@ -13,8 +14,14 @@ const props = defineProps<{
 
 const guestStore = useGuestStore()
 const seatingStore = useSeatingStore()
+const groupStore = useGroupStore()
 
 const guest = computed(() => props.guestId ? guestStore.getById(props.guestId) : null)
+
+const groupColor = computed(() => {
+  if (!guest.value?.groupId) return null
+  return groupStore.getById(guest.value.groupId)?.color ?? null
+})
 
 function onDrop(event: DragEvent) {
   event.preventDefault()
@@ -35,10 +42,12 @@ function unassign() {
   <div
     class="seat-badge"
     :class="{ occupied: !!guest, empty: !guest }"
+    :style="groupColor ? { borderLeftColor: groupColor, borderLeftWidth: '3px', borderLeftStyle: 'solid', background: groupColor + '18' } : {}"
     @drop="onDrop"
     @dragover="onDragOver"
   >
     <template v-if="guest">
+      <span v-if="groupColor" class="group-dot" :style="{ background: groupColor }" :title="groupStore.getById(guest.groupId!)?.name" />
       <span class="guest-name">{{ guest.firstName }} {{ guest.lastName[0] }}.</span>
       <button class="unassign-btn" title="Unassign" @click.stop="unassign">×</button>
     </template>
@@ -61,13 +70,20 @@ function unassign() {
   border: 1px dashed #ccc;
 }
 .occupied {
-  background: #f0fdf4;
   border-color: #86efac;
   border-style: solid;
 }
 .empty {
   background: #fafafa;
   color: #aaa;
+}
+.group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  margin-right: 4px;
 }
 .guest-name { flex: 1; }
 .unassign-btn {

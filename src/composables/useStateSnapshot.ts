@@ -4,6 +4,7 @@ import { useGuestStore } from '@/stores/useGuestStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useRoomStore } from '@/stores/useRoomStore'
 import { useMenuStore } from '@/stores/useMenuStore'
+import { useGroupStore } from '@/stores/useGroupStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 
 export function useStateSnapshot() {
@@ -12,6 +13,7 @@ export function useStateSnapshot() {
     const seatingStore = useSeatingStore()
     const roomStore = useRoomStore()
     const menuStore = useMenuStore()
+    const groupStore = useGroupStore()
     const configStore = useAppConfigStore()
 
     const config: AppConfig = {
@@ -28,6 +30,7 @@ export function useStateSnapshot() {
       tables: toRaw(seatingStore.tables),
       rooms: toRaw(roomStore.rooms),
       menuOptions: toRaw(menuStore.menuOptions),
+      groups: toRaw(groupStore.groups),
     }
 
     const json = JSON.stringify(snapshot, null, 2)
@@ -58,6 +61,7 @@ export function useStateSnapshot() {
           const seatingStore = useSeatingStore()
           const roomStore = useRoomStore()
           const menuStore = useMenuStore()
+          const groupStore = useGroupStore()
           const configStore = useAppConfigStore()
 
           if (snapshot.config) {
@@ -66,6 +70,7 @@ export function useStateSnapshot() {
             configStore.venue = snapshot.config.venue ?? ''
           }
           menuStore.bulkReplace(snapshot.menuOptions)
+          if (snapshot.groups) groupStore.bulkReplace(snapshot.groups)
           guestStore.bulkReplace(snapshot.guests)
           seatingStore.bulkReplace(snapshot.tables)
           roomStore.bulkReplace(snapshot.rooms)

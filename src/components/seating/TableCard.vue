@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NCard, NTag, NButton, NPopconfirm } from 'naive-ui'
+import { NCard, NTag, NButton, NPopconfirm, NInputNumber, NSpace } from 'naive-ui'
 import type { Table, Guest } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import SeatBadge from './SeatBadge.vue'
@@ -16,18 +16,36 @@ let origY = 0
 
 function onMouseDown(event: MouseEvent) {
   // only drag on the card header area
-  if ((event.target as HTMLElement).closest('button')) return
+  if ((event.target as HTMLElement).closest('button, .n-input-number')) return
   dragging = true
   startX = event.clientX
   startY = event.clientY
   origX = props.table.posX
   origY = props.table.posY
 
+  const wrapper = (event.currentTarget as HTMLElement)
+  const canvas = wrapper.parentElement
+  const canvasWidth = canvas?.clientWidth ?? window.innerWidth
+  const canvasHeight = canvas?.clientHeight ?? window.innerHeight
+  const rect = wrapper.getBoundingClientRect()
+
   function onMove(e: MouseEvent) {
     if (!dragging) return
+    let newX = origX + e.clientX - startX
+    let newY = origY + e.clientY - startY
+
+    // Boundary checks: allow movement even if card is larger than canvas
+    const minX = Math.min(0, canvasWidth - rect.width)
+    const maxX = Math.max(0, canvasWidth - rect.width)
+    newX = Math.max(minX, Math.min(newX, maxX))
+
+    const minY = Math.min(0, canvasHeight - rect.height)
+    const maxY = Math.max(0, canvasHeight - rect.height)
+    newY = Math.max(minY, Math.min(newY, maxY))
+
     seatingStore.updateTable(props.table.id, {
-      posX: Math.max(0, origX + e.clientX - startX),
-      posY: Math.max(0, origY + e.clientY - startY),
+      posX: newX,
+      posY: newY,
     })
   }
   function onUp() {
@@ -37,6 +55,10 @@ function onMouseDown(event: MouseEvent) {
   }
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)
+}
+
+function updateDim(key: 'widthCm' | 'lengthCm', val: number | null) {
+  seatingStore.updateTable(props.table.id, { [key]: val })
 }
 </script>
 
@@ -64,6 +86,29 @@ function onMouseDown(event: MouseEvent) {
         :unassigned-guests="unassignedGuests"
       />
 
+      <div class="table-dims-edit">
+        <n-space vertical size="small">
+          <div v-if="table.shape === 'rectangular'">
+            <div class="dim-label">Length (cm)</div>
+            <n-input-number
+              :value="table.lengthCm"
+              size="tiny"
+              placeholder="Len"
+              @update:value="updateDim('lengthCm', $event)"
+            />
+          </div>
+          <div>
+            <div class="dim-label">{{ table.shape === 'rectangular' ? 'Width' : 'Diameter' }} (cm)</div>
+            <n-input-number
+              :value="table.widthCm"
+              size="tiny"
+              placeholder="Wid"
+              @update:value="updateDim('widthCm', $event)"
+            />
+          </div>
+        </n-space>
+      </div>
+
       <template #action>
         <n-popconfirm @positive-click="emit('delete', table.id)">
           <template #trigger>
@@ -79,5 +124,15 @@ function onMouseDown(event: MouseEvent) {
 <style scoped>
 .table-card-wrapper {
   position: absolute;
+}
+.table-dims-edit {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+}
+.dim-label {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-bottom: 2px;
 }
 </style>

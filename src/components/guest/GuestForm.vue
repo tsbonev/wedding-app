@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, h } from 'vue'
 import {
   NForm, NFormItem, NInput, NSelect, NButton, NSpace
 } from 'naive-ui'
+import type { SelectOption } from 'naive-ui'
 import type { Guest, RSVPStatus } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useMenuStore } from '@/stores/useMenuStore'
+import { useGroupStore } from '@/stores/useGroupStore'
 
 const props = defineProps<{
   initial?: Partial<Guest>
@@ -15,6 +17,7 @@ const emit = defineEmits<{ (e: 'submit', guest: Omit<Guest, 'id' | 'createdAt'>)
 
 const guestStore = useGuestStore()
 const menuStore = useMenuStore()
+const groupStore = useGroupStore()
 
 const form = ref({
   firstName: props.initial?.firstName ?? '',
@@ -25,6 +28,7 @@ const form = ref({
   mealChoiceId: props.initial?.mealChoiceId ?? null as string | null,
   dietaryNotes: props.initial?.dietaryNotes ?? '',
   plusOneOf: props.initial?.plusOneOf ?? null as string | null,
+  groupId: props.initial?.groupId ?? null as string | null,
   notes: props.initial?.notes ?? '',
   tableId: props.initial?.tableId ?? null as string | null,
   roomId: props.initial?.roomId ?? null as string | null,
@@ -40,11 +44,28 @@ const mealOptions = computed(() =>
   menuStore.menuOptions.map((o) => ({ label: `${o.emoji} ${o.label}`, value: o.id }))
 )
 
+const groupOptions = computed<SelectOption[]>(() =>
+  groupStore.groups.map((g) => ({
+    label: g.name,
+    value: g.id,
+    color: g.color,
+  }))
+)
+
 const primaryGuestOptions = computed(() =>
   guestStore.guests
     .filter((g) => !g.plusOneOf && g.id !== props.initial?.id)
     .map((g) => ({ label: `${g.firstName} ${g.lastName}`, value: g.id }))
 )
+
+function renderGroupLabel(option: SelectOption) {
+  return h('div', { style: 'display:flex; align-items:center; gap:8px' }, [
+    h('span', {
+      style: `width:12px; height:12px; border-radius:50%; background:${option.color}; display:inline-block; flex-shrink:0`,
+    }),
+    h('span', String(option.label)),
+  ])
+}
 </script>
 
 <template>
@@ -57,6 +78,15 @@ const primaryGuestOptions = computed(() =>
         <n-input v-model:value="form.lastName" placeholder="Last name" />
       </n-form-item>
     </n-space>
+    <n-form-item label="Group">
+      <n-select
+        v-model:value="form.groupId"
+        :options="groupOptions"
+        :render-label="renderGroupLabel"
+        clearable
+        placeholder="Select group"
+      />
+    </n-form-item>
     <n-form-item label="Email">
       <n-input v-model:value="form.email" placeholder="email@example.com" />
     </n-form-item>
