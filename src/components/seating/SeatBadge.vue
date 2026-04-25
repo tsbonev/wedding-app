@@ -93,6 +93,7 @@ function renderSelectLabel(option: SelectOption & { color?: string | null }) {
 }
 
 function openDropdown() {
+  if (props.guestId) return
   if (selectOptions.value.length === 0) return
   showDropdown.value = true
 }
@@ -175,7 +176,17 @@ function onDoubleClick() {
     >
       <template v-if="guest">
         <span v-if="groupColor" class="group-dot" :style="{ background: groupColor }" :title="groupStore.getById(guest.groupId!)?.name" />
-        <span class="guest-name"><strong class="seat-num-badge">{{ displaySeatNumber }}</strong>. {{ guest.firstName }} {{ guest.lastName[0] }}.</span>
+        <span class="guest-name">
+          <strong class="seat-num-badge">{{ displaySeatNumber }}</strong>. {{ guest.firstName }} {{ guest.lastName[0] }}.
+          <template v-if="guest.customEmoji">
+            <span :title="guest.customEmoji">{{ guest.customEmoji }}</span>
+          </template>
+          <template v-else>
+            <span v-if="guest.isGroom" title="Groom">🤵</span>
+            <span v-if="guest.isBride" title="Bride">👰</span>
+            <span v-if="guest.isChild" title="Child">👶</span>
+          </template>
+        </span>
         <button class="unassign-btn" title="Unassign" @click.stop="unassign">×</button>
       </template>
       <template v-else>

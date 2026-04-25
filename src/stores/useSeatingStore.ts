@@ -8,7 +8,7 @@ export const useSeatingStore = defineStore('seating', () => {
 
   const getById = (id: string) => tables.value.find((t) => t.id === id)
 
-  function addTable(payload: { name: string; shape: TableShape; capacity: number; widthCm?: number | null; lengthCm?: number | null }) {
+  function addTable(payload: { name: string; shape: TableShape; capacity: number; widthCm?: number | null; lengthCm?: number | null; oneSided?: boolean }) {
     const seats = Array.from({ length: payload.capacity }, (_, i) => ({ index: i, guestId: null as string | null }))
     tables.value.push({
       id: crypto.randomUUID(),
@@ -24,6 +24,7 @@ export const useSeatingStore = defineStore('seating', () => {
       aerialPosY: 50 + tables.value.length * 20,
       rotation: 0,
       seatOriginCorner: null,
+      oneSided: payload.oneSided ?? false,
     })
   }
 
@@ -107,6 +108,7 @@ export const useSeatingStore = defineStore('seating', () => {
       aerialPosX: t.aerialPosX ?? t.posX,
       aerialPosY: t.aerialPosY ?? t.posY,
       seatOriginCorner: t.seatOriginCorner ?? null,
+      oneSided: t.oneSided ?? false,
     }))
   }
 

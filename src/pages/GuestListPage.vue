@@ -200,7 +200,11 @@ const columns = computed<DataTableColumns<Guest>>(() => [
             ? h('span', { style: `width:10px;height:10px;border-radius:50%;background:${grp.color};display:inline-block;flex-shrink:0` })
             : null,
           h('span', `${row.firstName} ${row.lastName}`),
-          row.isChild ? h('span', { title: 'Child' }, '👶') : null,
+          row.customEmoji ? h('span', { title: 'Custom Role' }, row.customEmoji) : [
+            row.isGroom ? h('span', { title: 'Groom' }, '🤵') : null,
+            row.isBride ? h('span', { title: 'Bride' }, '👰') : null,
+            row.isChild ? h('span', { title: 'Child' }, '👶') : null,
+          ],
         ]),
         partnerLabel ? h(NText, { depth: 3, style: 'font-size:11px;margin-top:1px' }, { default: () => partnerLabel }) : null,
       ])

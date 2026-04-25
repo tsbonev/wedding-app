@@ -327,7 +327,7 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 5;
+  z-index: 1;
 }
 .relation-arcs-svg {
   width: 100%;

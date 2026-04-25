@@ -6,6 +6,7 @@ export const useAppConfigStore = defineStore('config', () => {
   const weddingDate = ref<string | null>(null)
   const venue = ref('')
   const guestSidebarWidth = ref(280)
+  const seatingActiveTab = ref<'tables' | 'floorplan'>('tables')
   const showRelationLines = ref(true)
   const showParentalLines = ref(true)
   const showRelationLinesOnlySameTable = ref(false)
@@ -20,6 +21,7 @@ export const useAppConfigStore = defineStore('config', () => {
     weddingDate, 
     venue, 
     guestSidebarWidth, 
+    seatingActiveTab,
     showRelationLines, 
     showParentalLines, 
     showRelationLinesOnlySameTable, 

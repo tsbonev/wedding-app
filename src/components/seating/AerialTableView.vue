@@ -29,11 +29,13 @@ function setupOutsideClick() {
 // ── Rectangular seat split ───────────────────────────────────────────────────
 
 const topSeats = computed(() => {
+  if (props.table.oneSided) return props.table.seats
   const half = Math.ceil(props.table.seats.length / 2)
   return props.table.seats.slice(0, half)
 })
 
 const bottomSeats = computed(() => {
+  if (props.table.oneSided) return []
   const half = Math.ceil(props.table.seats.length / 2)
   return props.table.seats.slice(half)
 })
@@ -76,6 +78,10 @@ function getDisplaySeatNumber(seat: Seat) {
   const i = seat.index
 
   if (props.table.shape === 'rectangular') {
+    if (props.table.oneSided) {
+      if (corner === 'tl' || corner === 'bl') return i + 1
+      return n - i
+    }
     let di: number
     if (corner === 'tl') di = i
     else if (corner === 'tr') di = i < half ? half - 1 - i : half + (n - 1 - i)
@@ -333,6 +339,7 @@ function setOrigin(corner: SeatOriginCorner) {
   cursor: grab;
   user-select: none;
   transition: box-shadow 0.2s ease;
+  z-index: 2;
 }
 .aerial-wrapper:active { cursor: grabbing; }
 .aerial-wrapper.is-selected {

@@ -17,7 +17,6 @@ const seatingStore = useSeatingStore()
 const guestStore = useGuestStore()
 const configStore = useAppConfigStore()
 
-const activeTab = ref<'tables' | 'floorplan'>('tables')
 const showAddModal = ref(false)
 
 const unassigned = computed(() => guestStore.unassignedGuests)
@@ -56,9 +55,9 @@ watch(() => configStore.isLinkingMode, (val) => {
 
 <template>
   <div @mousemove="onMouseMove" @dragover="onMouseMove">
-    <n-tabs v-model:value="activeTab" type="line">
+    <n-tabs v-model:value="configStore.seatingActiveTab" type="line">
       <template #suffix>
-        <n-button v-if="activeTab === 'tables'" type="primary" size="small" @click="showAddModal = true">
+        <n-button v-if="configStore.seatingActiveTab === 'tables'" type="primary" size="small" @click="showAddModal = true">
           + Add Table
         </n-button>
       </template>
@@ -133,12 +132,12 @@ watch(() => configStore.isLinkingMode, (val) => {
                 icon="💺" title="No tables yet"
                 description="Switch to the Tables tab to add tables."
               />
+              <RelationArcs />
               <AerialTableView
                 v-for="table in seatingStore.tables" :key="table.id"
                 :table="table"
                 @edit-guest="handleEditGuest"
               />
-              <RelationArcs />
             </div>
             <UnassignedGuestList :guests="unassigned" @edit-guest="handleEditGuest" />
           </div>

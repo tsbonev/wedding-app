@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { NCard, NButton, NPopconfirm, NInputNumber, NSpace, NInput, useDialog } from 'naive-ui'
+import { NCard, NButton, NPopconfirm, NInputNumber, NSpace, NInput, NCheckbox, useDialog } from 'naive-ui'
 import type { Table, SeatOriginCorner } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import SeatBadge from './SeatBadge.vue'
@@ -60,10 +60,15 @@ function updateCapacity() {
 function displayIndex(seatIndex: number): number {
   const n = props.table.seats.length
   const half = Math.ceil(n / 2)
-  const corner: SeatOriginCorner | null = props.table.seatOriginCorner
+  const corner = props.table.seatOriginCorner
   const i = seatIndex
-  if (!corner || corner === 'tl') return i
+  if (!corner) return i
+  if (corner === 'tl') return i
   if (props.table.shape === 'rectangular') {
+    if (props.table.oneSided) {
+      if (corner === 'bl') return i
+      return n - 1 - i
+    }
     if (corner === 'tr') return i < half ? half - 1 - i : half + (n - 1 - i)
     if (corner === 'bl') return i >= half ? i - half : (n - half) + i
     return n - 1 - i // br
@@ -134,6 +139,15 @@ const sortedSeats = computed(() =>
             style="width: 50px"
             @update:value="updateDim('widthCm', $event)"
           />
+        </div>
+        <div v-if="table.shape === 'rectangular'" style="display: flex; align-items: flex-end; padding-bottom: 2px;">
+          <n-checkbox
+            :checked="table.oneSided"
+            size="small"
+            @update:checked="seatingStore.updateTable(table.id, { oneSided: $event })"
+          >
+            <span style="font-size: 10px; color: #94a3b8;">1-side</span>
+          </n-checkbox>
         </div>
       </n-space>
     </div>

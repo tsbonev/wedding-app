@@ -105,6 +105,14 @@ function onDoubleClick(guestId: string) {
             :style="`width:8px; height:8px; border-radius:50%; background:${groupColor(guest)}; flex-shrink:0`"
           />
           <span class="guest-name">{{ guest.firstName }} {{ guest.lastName }}</span>
+          <template v-if="guest.customEmoji">
+            <span :title="guest.customEmoji">{{ guest.customEmoji }}</span>
+          </template>
+          <template v-else>
+            <span v-if="guest.isGroom" title="Groom">🤵</span>
+            <span v-if="guest.isBride" title="Bride">👰</span>
+            <span v-if="guest.isChild" title="Child">👶</span>
+          </template>
         </div>
         <RSVPBadge :status="guest.rsvpStatus" />
       </div>

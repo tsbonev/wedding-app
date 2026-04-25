@@ -109,6 +109,7 @@ function renderSelectLabel(option: SelectOption & { color?: string | null }) {
 
 function openDropdown() {
   if (configStore.isLinkingMode) return
+  if (props.guestId) return
   if (selectOptions.value.length === 0) return
   showDropdown.value = true
 }
@@ -208,7 +209,6 @@ function onDoubleClick() {
             'is-occupied': !!guest,
             'is-empty': !guest,
             'is-drag-over': isDragOver,
-            'is-child': guest?.isChild,
           }"
           :data-guest-id="guestId"
           :style="[
@@ -227,6 +227,13 @@ function onDoubleClick() {
           @contextmenu.prevent="unassign"
         >
           <div class="seat-content">
+            <template v-if="guest?.customEmoji">
+              <div class="special-role-crown">{{ guest.customEmoji }}</div>
+            </template>
+            <template v-else-if="guest">
+              <div v-if="guest.isGroom || guest.isBride" class="special-role-crown">👑</div>
+              <div v-if="guest.isChild" class="special-role-crown">👶</div>
+            </template>
             <div v-if="guest" class="seat-guest-info">
               <span class="initials">{{ initials }}</span>
             </div>
@@ -286,17 +293,22 @@ function onDoubleClick() {
   box-sizing: border-box;
   cursor: pointer;
 }
-.seat-token.is-child {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
 .seat-content {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   height: 100%;
   transition: transform 0.2s ease;
+}
+.special-role-crown {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  pointer-events: none;
 }
 .is-occupied {
   color: #fff;

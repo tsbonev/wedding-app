@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, h } from 'vue'
 import {
-  NForm, NFormItem, NInput, NSelect, NButton, NSpace, NCheckbox
+  NForm, NFormItem, NInput, NSelect, NButton, NSpace, NCheckbox, NPopover, NInputGroup
 } from 'naive-ui'
+import EmojiPicker from 'vue3-emoji-picker'
+// @ts-ignore
+import 'vue3-emoji-picker/css'
 import type { SelectOption } from 'naive-ui'
 import type { Guest, RSVPStatus } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
@@ -28,6 +31,9 @@ const form = ref({
   partnerId: props.initial?.partnerId ?? null as string | null,
   parentId: props.initial?.parentId ?? null as string | null,
   isChild: props.initial?.isChild ?? false,
+  isGroom: props.initial?.isGroom ?? false,
+  isBride: props.initial?.isBride ?? false,
+  customEmoji: props.initial?.customEmoji ?? null as string | null,
   groupId: props.initial?.groupId ?? null as string | null,
   notes: props.initial?.notes ?? '',
   tableId: props.initial?.tableId ?? null as string | null,
@@ -89,6 +95,10 @@ function renderSingleSelectLabel(option: SelectOption & { color?: string | null 
     h('span', String(option.label)),
   ])
 }
+
+function onEmojiSelect(emoji: any) {
+  form.value.customEmoji = emoji.i
+}
 </script>
 
 <template>
@@ -122,8 +132,25 @@ function renderSingleSelectLabel(option: SelectOption & { color?: string | null 
       <n-input v-model:value="form.dietaryNotes" placeholder="Nut allergy, gluten-free, etc." />
     </n-form-item>
     <n-space>
-      <n-form-item label="Child">
-        <n-checkbox v-model:checked="form.isChild">Is Child</n-checkbox>
+      <n-form-item label="Role">
+        <n-space>
+          <n-checkbox v-model:checked="form.isGroom">Groom</n-checkbox>
+          <n-checkbox v-model:checked="form.isBride">Bride</n-checkbox>
+          <n-checkbox v-model:checked="form.isChild">Child</n-checkbox>
+        </n-space>
+      </n-form-item>
+      <n-form-item label="Custom Emoji" style="width: 140px">
+        <n-input-group>
+          <n-input v-model:value="form.customEmoji" placeholder="e.g. 🐶" clearable />
+          <n-popover trigger="click" placement="bottom-end" :width="300" scrollable>
+            <template #trigger>
+              <n-button ghost style="padding: 0 8px">
+                {{ form.customEmoji || '😀' }}
+              </n-button>
+            </template>
+            <EmojiPicker :native="true" @select="onEmojiSelect" />
+          </n-popover>
+        </n-input-group>
       </n-form-item>
       <n-form-item v-if="form.isChild" label="Parent" style="flex:1; min-width:200px">
         <n-select

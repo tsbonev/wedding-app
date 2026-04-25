@@ -16,6 +16,9 @@ export interface Guest {
   partnerId: string | null
   parentId: string | null
   isChild: boolean
+  isGroom: boolean
+  isBride: boolean
+  customEmoji: string | null
   groupId: string | null
   notes: string
   tableId: string | null
@@ -46,6 +49,7 @@ export interface Table {
   aerialPosY: number
   rotation: number
   seatOriginCorner: SeatOriginCorner | null
+  oneSided?: boolean
 }
 
 export interface Room {

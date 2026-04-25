@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { NModal, NCard, NForm, NFormItem, NInput, NSelect, NInputNumber, NSpace, NButton } from 'naive-ui'
+import { NModal, NCard, NForm, NFormItem, NInput, NSelect, NInputNumber, NSpace, NButton, NCheckbox } from 'naive-ui'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import type { TableShape } from '@/types'
 
@@ -14,6 +14,7 @@ const form = ref({
   capacity: 8,
   widthCm: null as number | null,
   lengthCm: null as number | null,
+  oneSided: false,
 })
 
 const shapeOptions = [
@@ -22,13 +23,17 @@ const shapeOptions = [
 ]
 
 watch(() => form.value.shape, (s) => {
-  if (s === 'round') { form.value.widthCm = null; form.value.lengthCm = null }
+  if (s === 'round') {
+    form.value.widthCm = null
+    form.value.lengthCm = null
+    form.value.oneSided = false
+  }
 })
 
 function handleAdd() {
   if (!form.value.name.trim()) return
   seatingStore.addTable({ ...form.value })
-  form.value = { name: '', shape: 'round', capacity: 8, widthCm: null, lengthCm: null }
+  form.value = { name: '', shape: 'round', capacity: 8, widthCm: null, lengthCm: null, oneSided: false }
   emit('close')
 }
 </script>
@@ -55,6 +60,9 @@ function handleAdd() {
               <n-input-number v-model:value="form.widthCm" :min="1" placeholder="e.g. 80" style="width:100%" />
             </n-form-item>
           </n-space>
+          <n-form-item>
+            <n-checkbox v-model:checked="form.oneSided">One-sided table</n-checkbox>
+          </n-form-item>
         </template>
         <n-space justify="end">
           <n-button @click="emit('close')">Cancel</n-button>
