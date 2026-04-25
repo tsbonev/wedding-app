@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { NTooltip } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useGroupStore } from '@/stores/useGroupStore'
+import { useMenuStore } from '@/stores/useMenuStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 
 const props = defineProps<{
@@ -13,13 +15,15 @@ const props = defineProps<{
 
 const guestStore = useGuestStore()
 const groupStore = useGroupStore()
+const menuStore = useMenuStore()
 const seatingStore = useSeatingStore()
 
 const guest = computed(() => props.guestId ? guestStore.getById(props.guestId) : null)
-
-const groupColor = computed(() => {
-  if (!guest.value?.groupId) return null
-  return groupStore.getById(guest.value.groupId)?.color ?? null
+const groupInfo = computed(() => guest.value?.groupId ? groupStore.getById(guest.value.groupId) ?? null : null)
+const groupColor = computed(() => groupInfo.value?.color ?? null)
+const mealOption = computed(() => {
+  if (!guest.value?.mealChoiceId) return null
+  return menuStore.menuOptions.find(m => m.id === guest.value!.mealChoiceId) ?? null
 })
 
 const initials = computed(() => {
@@ -39,6 +43,9 @@ function onDragStart(event: DragEvent) {
   event.dataTransfer!.setData('sourceTableId', props.tableId)
   event.dataTransfer!.setData('sourceSeatIndex', String(props.seatIndex))
   event.dataTransfer!.effectAllowed = 'move'
+  const token = event.currentTarget as HTMLElement
+  const rect = token.getBoundingClientRect()
+  event.dataTransfer!.setDragImage(token, event.clientX - rect.left, event.clientY - rect.top)
 }
 
 function onDragOver(event: DragEvent) {
@@ -70,30 +77,43 @@ function unassign() {
 </script>
 
 <template>
-  <div
-    class="seat-token"
-    :class="{
-      'is-occupied': !!guest,
-      'is-empty': !guest,
-      'is-drag-over': isDragOver,
-    }"
-    :style="guest && groupColor ? { background: groupColor } : {}"
-    :draggable="!!guest"
-    :title="fullName"
-    @dragstart="onDragStart"
-    @dragover="onDragOver"
-    @dragleave="onDragLeave"
-    @drop="onDrop"
-    @dblclick="unassign"
-  >
-    <div 
-      class="seat-content"
-      :style="rotation ? { transform: `rotate(${-rotation}deg)` } : {}"
-    >
-      <span v-if="guest" class="initials">{{ initials }}</span>
-      <span v-else class="seat-num">{{ seatIndex + 1 }}</span>
+  <n-tooltip trigger="hover" :disabled="!guest" placement="top" :keep-alive-on-hover="false">
+    <template #trigger>
+      <div
+        class="seat-token"
+        :class="{
+          'is-occupied': !!guest,
+          'is-empty': !guest,
+          'is-drag-over': isDragOver,
+        }"
+        :style="guest && groupColor ? { background: groupColor } : {}"
+        :draggable="!!guest"
+        @dragstart="onDragStart"
+        @dragover="onDragOver"
+        @dragleave="onDragLeave"
+        @drop="onDrop"
+        @dblclick="unassign"
+      >
+        <div
+          class="seat-content"
+          :style="rotation ? { transform: `rotate(${-rotation}deg)` } : {}"
+        >
+          <span v-if="guest" class="initials">{{ initials }}</span>
+          <span v-else class="seat-num">{{ seatIndex + 1 }}</span>
+        </div>
+      </div>
+    </template>
+
+    <div v-if="guest" class="seat-tooltip">
+      <div class="tooltip-name">{{ fullName }}</div>
+      <div v-if="groupInfo" class="tooltip-row">
+        <span class="group-dot" :style="{ background: groupInfo.color }" />
+        {{ groupInfo.name }}
+      </div>
+      <div v-if="mealOption" class="tooltip-row">{{ mealOption.emoji }} {{ mealOption.label }}</div>
+      <div v-if="guest.dietaryNotes" class="tooltip-row tooltip-diet">{{ guest.dietaryNotes }}</div>
     </div>
-  </div>
+  </n-tooltip>
 </template>
 
 <style scoped>
@@ -151,5 +171,32 @@ function unassign() {
 .initials {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   letter-spacing: 0.5px;
+}
+
+/* Tooltip */
+.seat-tooltip {
+  min-width: 120px;
+  max-width: 200px;
+}
+.tooltip-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tooltip-diet {
+  color: #9ca3af;
+  font-style: italic;
 }
 </style>

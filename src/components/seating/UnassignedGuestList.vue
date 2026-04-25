@@ -10,6 +10,9 @@ const groupStore = useGroupStore()
 
 function onDragStart(event: DragEvent, guest: Guest) {
   event.dataTransfer?.setData('guestId', guest.id)
+  const chip = event.currentTarget as HTMLElement
+  const rect = chip.getBoundingClientRect()
+  event.dataTransfer?.setDragImage(chip, event.clientX - rect.left, event.clientY - rect.top)
 }
 
 function groupColor(guest: Guest) {

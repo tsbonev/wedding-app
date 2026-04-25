@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { NButton } from 'naive-ui'
 import type { Table } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import AerialSeatToken from './AerialSeatToken.vue'
@@ -8,13 +7,18 @@ import AerialSeatToken from './AerialSeatToken.vue'
 const props = defineProps<{ table: Table }>()
 const seatingStore = useSeatingStore()
 const isSelected = ref(false)
+const el = ref<HTMLElement | null>(null)
 
 // ── Selection management ───────────────────────────────────────────────────
 
-function toggleSelection(event: MouseEvent) {
-  // If clicking a seat or button, don't toggle selection here
-  if ((event.target as HTMLElement).closest('.seat-token, button, .n-button, .rotate-handle')) return
-  isSelected.value = !isSelected.value
+function setupOutsideClick() {
+  function handler(e: MouseEvent) {
+    if (!el.value?.contains(e.target as Node)) {
+      isSelected.value = false
+      window.removeEventListener('mousedown', handler)
+    }
+  }
+  setTimeout(() => window.addEventListener('mousedown', handler), 0)
 }
 
 // ── Rectangular seat split ───────────────────────────────────────────────────
@@ -56,36 +60,38 @@ const innerCirclePx = computed(() => {
   return { d, offset }
 })
 
-// ── Dimension label ──────────────────────────────────────────────────────────
+// ── Seat count label ─────────────────────────────────────────────────────────
 
-const dimsLabel = computed(() => {
-  const t = props.table
-  if (t.lengthCm && t.widthCm) return `${t.lengthCm}×${t.widthCm} cm`
-  return `${t.capacity} seats`
-})
+const assignedCount = computed(() => props.table.seats.filter(s => s.guestId !== null).length)
 
-// ── Drag to reposition table card ────────────────────────────────────────────
+// ── Drag to reposition (only when selected) ──────────────────────────────────
 
 let startX = 0; let startY = 0; let origX = 0; let origY = 0
 
 function onMouseDown(event: MouseEvent) {
-  if ((event.target as HTMLElement).closest('.seat-token.is-occupied, button, .n-button, .rotate-handle')) return
+  if ((event.target as HTMLElement).closest('.seat-token, button, .n-button, .corner-handle')) return
+
+  if (!isSelected.value) {
+    isSelected.value = true
+    setupOutsideClick()
+  }
+
+  // Start drag tracking immediately (select + move in one gesture)
   startX = event.clientX; startY = event.clientY
   origX = props.table.aerialPosX; origY = props.table.aerialPosY
-  
-  isSelected.value = true
 
-  const wrapper = (event.currentTarget as HTMLElement)
-  const canvas = wrapper.parentElement
+  const canvas = (el.value as HTMLElement).parentElement
   const canvasWidth = canvas?.clientWidth ?? window.innerWidth
   const canvasHeight = canvas?.clientHeight ?? window.innerHeight
-  const rect = wrapper.getBoundingClientRect()
+  const rect = el.value!.getBoundingClientRect()
 
+  let moved = false
   function onMove(e: MouseEvent) {
+    if (!moved && Math.hypot(e.clientX - startX, e.clientY - startY) < 4) return
+    moved = true
     let newX = origX + e.clientX - startX
     let newY = origY + e.clientY - startY
 
-    // Boundary checks: allow movement even if table is larger than canvas
     const minX = Math.min(0, canvasWidth - rect.width)
     const maxX = Math.max(0, canvasWidth - rect.width)
     newX = Math.max(minX, Math.min(newX, maxX))
@@ -94,10 +100,7 @@ function onMouseDown(event: MouseEvent) {
     const maxY = Math.max(0, canvasHeight - rect.height)
     newY = Math.max(minY, Math.min(newY, maxY))
 
-    seatingStore.updateTable(props.table.id, {
-      aerialPosX: newX,
-      aerialPosY: newY,
-    })
+    seatingStore.updateTable(props.table.id, { aerialPosX: newX, aerialPosY: newY })
   }
   function onUp() {
     window.removeEventListener('mousemove', onMove)
@@ -105,46 +108,63 @@ function onMouseDown(event: MouseEvent) {
   }
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)
-
-  // Listen for click outside this table to deselect
-  const onOutsideClick = (e: MouseEvent) => {
-    if (!(event.currentTarget as HTMLElement).contains(e.target as Node)) {
-      isSelected.value = false
-      window.removeEventListener('mousedown', onOutsideClick)
-    }
-  }
-  // Delay adding the listener to avoid immediate trigger from current click
-  setTimeout(() => {
-    window.addEventListener('mousedown', onOutsideClick)
-  }, 0)
 }
 
-function rotateTable() {
-  seatingStore.updateTable(props.table.id, {
-    rotation: (props.table.rotation + 45) % 360,
-  })
+// ── Corner drag-to-rotate (snaps to 45° on release) ─────────────────────────
+
+function onCornerMouseDown(event: MouseEvent) {
+  event.stopPropagation()
+  event.preventDefault()
+
+  const rect = el.value!.getBoundingClientRect()
+  const centerX = rect.left + rect.width / 2
+  const centerY = rect.top + rect.height / 2
+
+  const startAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI)
+  const startRotation = props.table.rotation
+
+  function onMove(e: MouseEvent) {
+    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
+    const delta = angle - startAngle
+    const raw = ((startRotation + delta) % 360 + 360) % 360
+    seatingStore.updateTable(props.table.id, { rotation: raw })
+  }
+
+  function onUp() {
+    const snapped = (Math.round(props.table.rotation / 45) * 45 + 360) % 360
+    seatingStore.updateTable(props.table.id, { rotation: snapped })
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+  }
+
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
 }
 </script>
 
 <template>
   <div
+    ref="el"
     class="aerial-wrapper"
     :class="{ 'is-selected': isSelected }"
-    :style="{ 
-      left: table.aerialPosX + 'px', 
+    :style="{
+      left: table.aerialPosX + 'px',
       top: table.aerialPosY + 'px',
       transform: `rotate(${table.rotation}deg)`
     }"
     @mousedown="onMouseDown"
   >
-    <div v-if="isSelected" class="rotate-handle" title="Rotate table" @mousedown.stop="rotateTable">
-      🔄
-    </div>
+    <!-- Corner rotation handles (visible when selected) -->
+    <template v-if="isSelected">
+      <div class="corner-handle tl" title="Drag to rotate" @mousedown="onCornerMouseDown" />
+      <div class="corner-handle tr" title="Drag to rotate" @mousedown="onCornerMouseDown" />
+      <div class="corner-handle bl" title="Drag to rotate" @mousedown="onCornerMouseDown" />
+      <div class="corner-handle br" title="Drag to rotate" @mousedown="onCornerMouseDown" />
+    </template>
 
     <!-- ── Rectangular ── -->
     <template v-if="table.shape === 'rectangular'">
       <div class="aerial-rect">
-        <!-- top seats -->
         <div class="seats-row" :style="{ width: rectBodyWidth + 'px' }">
           <AerialSeatToken
             v-for="seat in topSeats" :key="seat.index"
@@ -153,15 +173,13 @@ function rotateTable() {
           />
         </div>
 
-        <!-- table body -->
         <div class="rect-body" :style="{ width: rectBodyWidth + 'px' }">
           <div :style="{ transform: `rotate(${-table.rotation}deg)` }" class="text-container">
             <span class="tname">{{ table.name }}</span>
-            <span class="tdims">{{ dimsLabel }}</span>
+            <span class="tdims">({{ assignedCount }}/{{ table.capacity }})</span>
           </div>
         </div>
 
-        <!-- bottom seats -->
         <div class="seats-row" :style="{ width: rectBodyWidth + 'px' }">
           <AerialSeatToken
             v-for="seat in bottomSeats" :key="seat.index"
@@ -178,7 +196,6 @@ function rotateTable() {
         class="aerial-round"
         :style="{ width: roundContainerSize + 'px', height: roundContainerSize + 'px' }"
       >
-        <!-- inner table circle -->
         <div
           class="round-inner"
           :style="{
@@ -190,11 +207,10 @@ function rotateTable() {
         >
           <div :style="{ transform: `rotate(${-table.rotation}deg)` }" class="text-container">
             <span class="tname">{{ table.name }}</span>
-            <span class="tdims">{{ dimsLabel }}</span>
+            <span class="tdims">({{ assignedCount }}/{{ table.capacity }})</span>
           </div>
         </div>
 
-        <!-- seat tokens positioned around the circle -->
         <AerialSeatToken
           v-for="(seat, idx) in table.seats" :key="seat.index"
           :table-id="table.id" :seat-index="seat.index" :guest-id="seat.guestId"
@@ -221,27 +237,21 @@ function rotateTable() {
   border-radius: 4px;
 }
 
-.rotate-handle {
+/* Corner handles */
+.corner-handle {
   position: absolute;
-  top: -12px;
-  right: -12px;
-  background: white;
-  border: 1px solid #3b82f6;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+  width: 10px;
+  height: 10px;
+  background: #3b82f6;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  cursor: alias;
   z-index: 10;
-  font-size: 14px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-.rotate-handle:hover {
-  background: #eff6ff;
-  transform: scale(1.1);
-}
+.corner-handle.tl { top: -5px; left: -5px; }
+.corner-handle.tr { top: -5px; right: -5px; }
+.corner-handle.bl { bottom: -5px; left: -5px; }
+.corner-handle.br { bottom: -5px; right: -5px; }
 
 /* Rectangular */
 .aerial-rect {

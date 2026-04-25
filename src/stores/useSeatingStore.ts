@@ -78,6 +78,22 @@ export const useSeatingStore = defineStore('seating', () => {
     if (toGuestId) guestStore.updateGuest(toGuestId, { tableId: fromTableId })
   }
 
+  function resizeTable(id: string, newCapacity: number) {
+    const table = tables.value.find(t => t.id === id)
+    if (!table || newCapacity < 1) return
+    const guestStore = useGuestStore()
+    const current = table.seats.length
+    if (newCapacity > current) {
+      for (let i = current; i < newCapacity; i++) table.seats.push({ index: i, guestId: null })
+    } else {
+      for (let i = newCapacity; i < current; i++) {
+        if (table.seats[i].guestId) guestStore.updateGuest(table.seats[i].guestId!, { tableId: null })
+      }
+      table.seats = table.seats.slice(0, newCapacity)
+    }
+    table.capacity = newCapacity
+  }
+
   function bulkReplace(list: Table[]) {
     tables.value = list.map(t => ({
       rotation: 0,
@@ -87,5 +103,5 @@ export const useSeatingStore = defineStore('seating', () => {
     }))
   }
 
-  return { tables, getById, addTable, updateTable, deleteTable, assignGuest, unassignGuest, swapSeats, bulkReplace }
+  return { tables, getById, addTable, updateTable, deleteTable, resizeTable, assignGuest, unassignGuest, swapSeats, bulkReplace }
 }, { persist: true })
