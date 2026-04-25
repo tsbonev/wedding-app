@@ -9,6 +9,7 @@ import { useMenuStore } from '@/stores/useMenuStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import type { Guest, RSVPStatus } from '@/types'
 import GuestFormModal from '@/components/guest/GuestFormModal.vue'
+import BulkAddModal from '@/components/guest/BulkAddModal.vue'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
 import EmptyState from '@/components/shared/EmptyState.vue'
 
@@ -19,6 +20,7 @@ const groupStore = useGroupStore()
 // ── Filters ───────────────────────────────────────────────────────────────────
 
 const showModal = ref(false)
+const showBulkModal = ref(false)
 const editingGuest = ref<Guest | undefined>(undefined)
 const search = ref('')
 const rsvpFilter = ref('')
@@ -43,8 +45,7 @@ const filtered = computed(() => {
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     list = list.filter((g) =>
-      `${g.firstName} ${g.lastName}`.toLowerCase().includes(q) ||
-      (g.email ?? '').toLowerCase().includes(q)
+      `${g.firstName} ${g.lastName}`.toLowerCase().includes(q)
     )
   }
   return list
@@ -136,8 +137,14 @@ function getPlusOneLabel(id: string | null) {
   return g ? `+1 of ${g.firstName} ${g.lastName}` : null
 }
 
-function openAdd() { editingGuest.value = undefined; showModal.value = true }
-function openEdit(guest: Guest) { editingGuest.value = guest; showModal.value = true }
+function openAdd() {
+  editingGuest.value = undefined
+  showModal.value = true
+}
+function openEdit(guest: Guest) {
+  editingGuest.value = guest
+  showModal.value = true
+}
 
 // ── Columns ───────────────────────────────────────────────────────────────────
 // Must be `computed` so the table re-renders when editingCell / selectOpen change.
@@ -303,7 +310,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
     key: 'actions',
     width: 100,
     render: (row) =>
-      h(NSpace, { size: 8 }, {
+      h(NSpace, { size: 8, justify: 'end' }, {
         default: () => [
           h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => 'Edit' }),
           h(NPopconfirm, { onPositiveClick: () => guestStore.deleteGuest(row.id) }, {
@@ -320,11 +327,14 @@ const columns = computed<DataTableColumns<Guest>>(() => [
   <div>
     <n-space justify="space-between" align="center" style="margin-bottom: 16px;">
       <h2 style="margin: 0;">Guests</h2>
-      <n-button type="primary" @click="openAdd">+ Add Guest</n-button>
+      <n-space>
+        <n-button @click="showBulkModal = true">Add Multiple Guests</n-button>
+        <n-button type="primary" @click="openAdd">+ Add Guest</n-button>
+      </n-space>
     </n-space>
 
     <n-space style="margin-bottom: 16px;" wrap>
-      <n-input v-model:value="search" placeholder="Search name or email…" clearable style="width: 220px" />
+      <n-input v-model:value="search" placeholder="Search name…" clearable style="width: 220px" />
       <n-select v-model:value="rsvpFilter" :options="rsvpFilterOptions" style="width: 140px" />
       <n-select v-model:value="groupFilter" :options="groupFilterOptions" style="width: 180px" />
     </n-space>
@@ -333,7 +343,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       v-if="guestStore.guests.length === 0"
       icon="👥"
       title="No guests yet"
-      description="Click 'Add Guest' to start building your guest list."
+      description="Click 'Add Guest' or 'Add Multiple Guests' to start building your guest list."
     />
 
     <n-data-table
@@ -349,6 +359,11 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       :show="showModal"
       :guest="editingGuest"
       @close="showModal = false"
+    />
+
+    <BulkAddModal
+      :show="showBulkModal"
+      @close="showBulkModal = false"
     />
   </div>
 </template>

@@ -20,7 +20,7 @@ function handleSubmit(data: Omit<Guest, 'id' | 'createdAt'>) {
 </script>
 
 <template>
-  <n-modal :show="show" :mask-closable="false">
+  <n-modal :show="show" :mask-closable="false" @update:show="(val) => !val && emit('close')">
     <n-card
       :title="guest ? 'Edit Guest' : 'Add Guest'"
       style="max-width: 520px; width: 95vw;"

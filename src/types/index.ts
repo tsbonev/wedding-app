@@ -10,8 +10,6 @@ export interface Guest {
   id: string
   firstName: string
   lastName: string
-  email?: string
-  phone?: string
   rsvpStatus: RSVPStatus
   mealChoiceId: string | null
   dietaryNotes: string

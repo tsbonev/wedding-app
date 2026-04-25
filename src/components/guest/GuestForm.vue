@@ -22,8 +22,6 @@ const groupStore = useGroupStore()
 const form = ref({
   firstName: props.initial?.firstName ?? '',
   lastName: props.initial?.lastName ?? '',
-  email: props.initial?.email ?? '',
-  phone: props.initial?.phone ?? '',
   rsvpStatus: (props.initial?.rsvpStatus ?? 'pending') as RSVPStatus,
   mealChoiceId: props.initial?.mealChoiceId ?? null as string | null,
   dietaryNotes: props.initial?.dietaryNotes ?? '',
@@ -86,12 +84,6 @@ function renderGroupLabel(option: SelectOption) {
         clearable
         placeholder="Select group"
       />
-    </n-form-item>
-    <n-form-item label="Email">
-      <n-input v-model:value="form.email" placeholder="email@example.com" />
-    </n-form-item>
-    <n-form-item label="Phone">
-      <n-input v-model:value="form.phone" placeholder="+1 555 000 0000" />
     </n-form-item>
     <n-form-item label="RSVP Status">
       <n-select v-model:value="form.rsvpStatus" :options="rsvpOptions" />
