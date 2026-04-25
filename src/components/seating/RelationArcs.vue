@@ -28,6 +28,7 @@ function updatePositions() {
   if (!canvas) return
   
   const canvasRect = canvas.getBoundingClientRect()
+  const zoom = configStore.zoomLevel
 
   // 1. Guest tokens and positions
   const tokens = document.querySelectorAll('.seat-token[data-guest-id]')
@@ -39,8 +40,8 @@ function updatePositions() {
       const table = guest?.tableId ? seatingStore.getById(guest.tableId) : null
       
       newPositions.set(guestId, {
-        x: rect.left - canvasRect.left + rect.width / 2,
-        y: rect.top - canvasRect.top + rect.height / 2,
+        x: (rect.left - canvasRect.left) / zoom + (rect.width / 2) / zoom,
+        y: (rect.top - canvasRect.top) / zoom + (rect.height / 2) / zoom,
         tableId: guest?.tableId ?? null,
         rotation: table?.rotation ?? 0
       })
@@ -58,10 +59,10 @@ function updatePositions() {
         // Add a small padding to the mask for better legibility
         const padding = 2
         newMaskRects.push({
-          x: rect.left - canvasRect.left - padding,
-          y: rect.top - canvasRect.top - padding,
-          width: rect.width + padding * 2,
-          height: rect.height + padding * 2
+          x: (rect.left - canvasRect.left) / zoom - padding,
+          y: (rect.top - canvasRect.top) / zoom - padding,
+          width: rect.width / zoom + padding * 2,
+          height: rect.height / zoom + padding * 2
         })
       }
     })
@@ -74,8 +75,8 @@ function updatePositions() {
     if (guestId && !newPositions.has(guestId)) {
       const rect = el.getBoundingClientRect()
       newPositions.set(guestId, {
-        x: rect.left - canvasRect.left + rect.width / 2,
-        y: rect.top - canvasRect.top + rect.height / 2,
+        x: (rect.left - canvasRect.left) / zoom + (rect.width / 2) / zoom,
+        y: (rect.top - canvasRect.top) / zoom + (rect.height / 2) / zoom,
         tableId: null,
         rotation: 0
       })
@@ -225,9 +226,10 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
         const isRect = table.shape === 'rectangular'
         const rad = table.rotation * (Math.PI / 180)
         
-        const rectBodyWidth = Math.ceil(table.capacity / 2) * 44 + 16
+        const half = Math.ceil(table.capacity / 2)
+        const rectBodyWidth = half * 40 + (half - 1) * 8 + 24
         const tCX = table.aerialPosX + rectBodyWidth / 2
-        const tCY = table.aerialPosY + 26
+        const tCY = table.aerialPosY + 32
 
         const dx = pos.x - tCX
         const dy = pos.y - tCY
@@ -366,7 +368,7 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
           stroke-dasharray="6 3"
           class="arc-path"
           :class="{ 'is-hovered': hoveredArcId === arc.id, 'has-hover': hoveredArcId !== null && hoveredArcId !== arc.id }"
-          mask="url(#relation-mask)"
+          :mask="hoveredArcId === arc.id ? null : 'url(#relation-mask)'"
         />
       </g>
 

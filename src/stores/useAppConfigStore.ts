@@ -17,6 +17,56 @@ export const useAppConfigStore = defineStore('config', () => {
   const mousePosX = ref(0)
   const mousePosY = ref(0)
 
+  const canvasWidth = ref(1200)
+  const canvasHeight = ref(1000)
+  const zoomLevel = ref(1)
+  const panX = ref(0)
+  const panY = ref(0)
+
+  function fitCanvasToTables(tables: any[]) {
+    if (tables.length === 0) {
+      canvasWidth.value = 1200
+      canvasHeight.value = 1000
+      return
+    }
+
+    let maxR = 0
+    let maxB = 0
+
+    tables.forEach(table => {
+      // Approximate table dimensions in the floor plan
+      let w = 0
+      let h = 0
+
+      if (table.shape === 'rectangular') {
+        const topCount = table.oneSided ? table.seats.length : Math.ceil(table.seats.length / 2)
+        w = topCount * 40 + (topCount - 1) * 8 + 24
+        h = 64
+      } else {
+        const radius = Math.max(60, table.seats.length * 10)
+        w = 2 * (radius + 30)
+        h = w
+      }
+
+      // Handle rotation for bounding box
+      const rad = (table.rotation * Math.PI) / 180
+      const absCos = Math.abs(Math.cos(rad))
+      const absSin = Math.abs(Math.sin(rad))
+      
+      const rotatedW = w * absCos + h * absSin
+      const rotatedH = w * absSin + h * absCos
+
+      const r = table.aerialPosX + rotatedW
+      const b = table.aerialPosY + rotatedH
+
+      if (r > maxR) maxR = r
+      if (b > maxB) maxB = b
+    })
+
+    canvasWidth.value = Math.max(1200, Math.ceil(maxR + 200))
+    canvasHeight.value = Math.max(1000, Math.ceil(maxB + 200))
+  }
+
   return { 
     coupleName, 
     weddingDate, 
@@ -31,6 +81,12 @@ export const useAppConfigStore = defineStore('config', () => {
     linkingModeType,
     activeLinkingSource,
     mousePosX,
-    mousePosY
+    mousePosY,
+    canvasWidth,
+    canvasHeight,
+    zoomLevel,
+    panX,
+    panY,
+    fitCanvasToTables
   }
 }, { persist: true })

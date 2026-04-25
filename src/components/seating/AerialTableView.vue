@@ -197,29 +197,42 @@ function onMouseDown(event: MouseEvent) {
   startX = event.clientX; startY = event.clientY
   origX = props.table.aerialPosX; origY = props.table.aerialPosY
 
-  const canvas = (el.value as HTMLElement).parentElement
-  const canvasWidth = canvas?.clientWidth ?? window.innerWidth
-  const canvasHeight = canvas?.clientHeight ?? window.innerHeight
   const rect = el.value!.getBoundingClientRect()
 
   let moved = false
   function onMove(e: MouseEvent) {
     if (!moved && Math.hypot(e.clientX - startX, e.clientY - startY) < 4) return
     moved = true
-    let newX = origX + e.clientX - startX
-    let newY = origY + e.clientY - startY
-    const minX = Math.min(0, canvasWidth - rect.width)
-    const maxX = Math.max(0, canvasWidth - rect.width)
-    newX = Math.max(minX, Math.min(newX, maxX))
-    const minY = Math.min(0, canvasHeight - rect.height)
-    const maxY = Math.max(0, canvasHeight - rect.height)
-    newY = Math.max(minY, Math.min(newY, maxY))
+    
+    // Adjust movement based on zoom level
+    const dx = (e.clientX - startX) / configStore.zoomLevel
+    const dy = (e.clientY - startY) / configStore.zoomLevel
+    
+    let newX = origX + dx
+    let newY = origY + dy
+    
+    // Prevent moving out of top/left bounds
+    newX = Math.max(0, newX)
+    newY = Math.max(0, newY)
+
+    // Expand canvas if moving right or down
+    const tableRight = newX + rect.width / configStore.zoomLevel
+    const tableBottom = newY + rect.height / configStore.zoomLevel
+    
+    if (tableRight > configStore.canvasWidth) {
+      configStore.canvasWidth = Math.ceil(tableRight + 100)
+    }
+    if (tableBottom > configStore.canvasHeight) {
+      configStore.canvasHeight = Math.ceil(tableBottom + 100)
+    }
+
     seatingStore.updateTable(props.table.id, { aerialPosX: newX, aerialPosY: newY })
   }
   function onUp() {
     window.removeEventListener('mousemove', onMove)
     window.removeEventListener('mouseup', onUp)
   }
+
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)
 }
@@ -239,7 +252,7 @@ function onCornerMouseDown(event: MouseEvent) {
 
   function onMove(e: MouseEvent) {
     const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
-    const delta = angle - startAngle
+    const delta = (angle - startAngle) // Rotation doesn't need zoom adjustment as it's angle based
     const raw = ((startRotation + delta) % 360 + 360) % 360
     seatingStore.updateTable(props.table.id, { rotation: raw })
   }
