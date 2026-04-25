@@ -66,12 +66,12 @@ const innerCirclePx = computed(() => {
 
 const assignedCount = computed(() => props.table.seats.filter(s => s.guestId !== null).length)
 
-// ── Drag to reposition (only when selected) ──────────────────────────────────
+// ── Drag to reposition ────────────────────────────────────────────────────────
 
 let startX = 0; let startY = 0; let origX = 0; let origY = 0
 
 function onMouseDown(event: MouseEvent) {
-  if ((event.target as HTMLElement).closest('.seat-token, button, .n-button, .corner-handle')) return
+  if ((event.target as HTMLElement).closest('.seat-token, button, .n-button, .corner-handle, .origin-dot')) return
 
   if (!isSelected.value) {
     isSelected.value = true
@@ -92,15 +92,12 @@ function onMouseDown(event: MouseEvent) {
     moved = true
     let newX = origX + e.clientX - startX
     let newY = origY + e.clientY - startY
-
     const minX = Math.min(0, canvasWidth - rect.width)
     const maxX = Math.max(0, canvasWidth - rect.width)
     newX = Math.max(minX, Math.min(newX, maxX))
-
     const minY = Math.min(0, canvasHeight - rect.height)
     const maxY = Math.max(0, canvasHeight - rect.height)
     newY = Math.max(minY, Math.min(newY, maxY))
-
     seatingStore.updateTable(props.table.id, { aerialPosX: newX, aerialPosY: newY })
   }
   function onUp() {
@@ -111,24 +108,19 @@ function onMouseDown(event: MouseEvent) {
   window.addEventListener('mouseup', onUp)
 }
 
-// ── Corner: drag = rotate (snap 45° on release), click = set seat origin ─────
+// ── Corner drag-to-rotate (snaps to 45° on release) ─────────────────────────
 
-function onCornerMouseDown(event: MouseEvent, corner: SeatOriginCorner) {
+function onCornerMouseDown(event: MouseEvent) {
   event.stopPropagation()
   event.preventDefault()
 
   const rect = el.value!.getBoundingClientRect()
   const centerX = rect.left + rect.width / 2
   const centerY = rect.top + rect.height / 2
-  const startMouseX = event.clientX
-  const startMouseY = event.clientY
   const startAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI)
   const startRotation = props.table.rotation
-  let moved = false
 
   function onMove(e: MouseEvent) {
-    if (!moved && Math.hypot(e.clientX - startMouseX, e.clientY - startMouseY) < 4) return
-    moved = true
     const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
     const delta = angle - startAngle
     const raw = ((startRotation + delta) % 360 + 360) % 360
@@ -136,18 +128,20 @@ function onCornerMouseDown(event: MouseEvent, corner: SeatOriginCorner) {
   }
 
   function onUp() {
-    if (!moved) {
-      seatingStore.reorderSeatsFromCorner(props.table.id, corner)
-    } else {
-      const snapped = (Math.round(props.table.rotation / 45) * 45 + 360) % 360
-      seatingStore.updateTable(props.table.id, { rotation: snapped })
-    }
+    const snapped = (Math.round(props.table.rotation / 45) * 45 + 360) % 360
+    seatingStore.updateTable(props.table.id, { rotation: snapped })
     window.removeEventListener('mousemove', onMove)
     window.removeEventListener('mouseup', onUp)
   }
 
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)
+}
+
+// ── Origin dot click: set seat numbering origin ───────────────────────────────
+
+function setOrigin(corner: SeatOriginCorner) {
+  seatingStore.updateTable(props.table.id, { seatOriginCorner: corner })
 }
 </script>
 
@@ -163,15 +157,12 @@ function onCornerMouseDown(event: MouseEvent, corner: SeatOriginCorner) {
     }"
     @mousedown="onMouseDown"
   >
-    <!-- Corner handles (visible when selected): drag = rotate, click = set seat #1 origin -->
+    <!-- Rotation corner handles (drag only) -->
     <template v-if="isSelected">
-      <div
-        v-for="c in CORNERS" :key="c"
-        class="corner-handle"
-        :class="[c, { 'is-origin': table.seatOriginCorner === c }]"
-        title="Drag to rotate · Click to start seat numbering here"
-        @mousedown="onCornerMouseDown($event, c)"
-      />
+      <div class="corner-handle tl" title="Drag to rotate" @mousedown="onCornerMouseDown" />
+      <div class="corner-handle tr" title="Drag to rotate" @mousedown="onCornerMouseDown" />
+      <div class="corner-handle bl" title="Drag to rotate" @mousedown="onCornerMouseDown" />
+      <div class="corner-handle br" title="Drag to rotate" @mousedown="onCornerMouseDown" />
     </template>
 
     <!-- ── Rectangular ── -->
@@ -186,6 +177,15 @@ function onCornerMouseDown(event: MouseEvent, corner: SeatOriginCorner) {
         </div>
 
         <div class="rect-body" :style="{ width: rectBodyWidth + 'px' }">
+          <!-- Seat-origin corner dots (visible when selected) -->
+          <template v-if="isSelected">
+            <div
+              v-for="c in CORNERS" :key="`origin-${c}`"
+              class="origin-dot" :class="[c, { 'is-origin': table.seatOriginCorner === c }]"
+              title="Click to start seat numbering here"
+              @mousedown.stop="setOrigin(c)"
+            />
+          </template>
           <div :style="{ transform: `rotate(${-table.rotation}deg)` }" class="text-container">
             <span class="tname">{{ table.name }}</span>
             <span class="tdims">({{ assignedCount }}/{{ table.capacity }})</span>
@@ -217,6 +217,15 @@ function onCornerMouseDown(event: MouseEvent, corner: SeatOriginCorner) {
             height: innerCirclePx.d + 'px',
           }"
         >
+          <!-- Seat-origin corner dots (visible when selected) -->
+          <template v-if="isSelected">
+            <div
+              v-for="c in CORNERS" :key="`origin-${c}`"
+              class="origin-dot origin-dot-round" :class="[c, { 'is-origin': table.seatOriginCorner === c }]"
+              title="Click to start seat numbering here"
+              @mousedown.stop="setOrigin(c)"
+            />
+          </template>
           <div :style="{ transform: `rotate(${-table.rotation}deg)` }" class="text-container">
             <span class="tname">{{ table.name }}</span>
             <span class="tdims">({{ assignedCount }}/{{ table.capacity }})</span>
@@ -249,7 +258,7 @@ function onCornerMouseDown(event: MouseEvent, corner: SeatOriginCorner) {
   border-radius: 4px;
 }
 
-/* Corner handles */
+/* Rotation corner handles */
 .corner-handle {
   position: absolute;
   width: 16px;
@@ -259,15 +268,36 @@ function onCornerMouseDown(event: MouseEvent, corner: SeatOriginCorner) {
   border-radius: 3px;
   cursor: alias;
   z-index: 10;
-  transition: background 0.15s;
 }
 .corner-handle:hover { background: #2563eb; }
 .corner-handle.tl { top: -8px; left: -8px; }
 .corner-handle.tr { top: -8px; right: -8px; }
 .corner-handle.bl { bottom: -8px; left: -8px; }
 .corner-handle.br { bottom: -8px; right: -8px; }
-.corner-handle.is-origin { background: #f59e0b; }
-.corner-handle.is-origin:hover { background: #d97706; }
+
+/* Origin dots inside the table body */
+.origin-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #9ca3af;
+  border-radius: 2px;
+  cursor: pointer;
+  z-index: 5;
+  transition: background 0.12s;
+}
+.origin-dot:hover { background: #d97706; }
+.origin-dot.is-origin { background: #f59e0b; }
+.origin-dot.tl { top: 4px; left: 4px; }
+.origin-dot.tr { top: 4px; right: 4px; }
+.origin-dot.bl { bottom: 4px; left: 4px; }
+.origin-dot.br { bottom: 4px; right: 4px; }
+
+/* Round table origin dots: percentage-based to stay inside circle */
+.origin-dot-round.tl { top: 18%; left: 18%; }
+.origin-dot-round.tr { top: 18%; right: 18%; }
+.origin-dot-round.bl { bottom: 18%; left: 18%; }
+.origin-dot-round.br { bottom: 18%; right: 18%; }
 
 /* Rectangular */
 .aerial-rect {

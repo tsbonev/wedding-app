@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, h } from 'vue'
+import { ref, computed, watch, nextTick, h } from 'vue'
 import { NPopover, NSelect } from 'naive-ui'
 import type { SelectOption } from 'naive-ui'
+import type { SeatOriginCorner } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -17,6 +18,14 @@ const seatingStore = useSeatingStore()
 const groupStore = useGroupStore()
 
 const showPopover = ref(false)
+const selectRef = ref<InstanceType<typeof NSelect> | null>(null)
+
+watch(showPopover, async (val) => {
+  if (val) {
+    await nextTick()
+    selectRef.value?.focus()
+  }
+})
 
 const guest = computed(() => props.guestId ? guestStore.getById(props.guestId) : null)
 
@@ -24,6 +33,40 @@ const groupColor = computed(() => {
   if (!guest.value?.groupId) return null
   return groupStore.getById(guest.value.groupId)?.color ?? null
 })
+
+// ── Display seat number based on origin corner ────────────────────────────────
+
+const displaySeatNumber = computed(() => {
+  const table = seatingStore.getById(props.tableId)
+  if (!table || !table.seatOriginCorner) return props.seatIndex + 1
+  const n = table.seats.length
+  const half = Math.ceil(n / 2)
+  const corner: SeatOriginCorner = table.seatOriginCorner
+  const i = props.seatIndex
+
+  if (table.shape === 'rectangular') {
+    let di: number
+    if (corner === 'tl') di = i
+    else if (corner === 'tr') di = i < half ? half - 1 - i : half + (n - 1 - i)
+    else if (corner === 'bl') di = i >= half ? i - half : (n - half) + i
+    else di = n - 1 - i // br
+    return di + 1
+  } else {
+    const cornerDeg: Record<SeatOriginCorner, number> = { tl: 225, tr: 315, br: 45, bl: 135 }
+    const ca = cornerDeg[corner]
+    let startK = 0
+    let minDist = Infinity
+    for (let k = 0; k < n; k++) {
+      const deg = ((k / n) * 360 - 90 + 360) % 360
+      let d = Math.abs(deg - ca)
+      if (d > 180) d = 360 - d
+      if (d < minDist) { minDist = d; startK = k }
+    }
+    return ((i - startK + n) % n) + 1
+  }
+})
+
+// ── Assign dropdown ───────────────────────────────────────────────────────────
 
 const selectOptions = computed((): (SelectOption & { color?: string | null })[] =>
   guestStore.unassignedGuests.map(g => ({
@@ -78,13 +121,15 @@ function onSelectGuest(val: string) {
           <button class="unassign-btn" title="Unassign" @click.stop="unassign">×</button>
         </template>
         <template v-else>
-          <span class="empty-label">Seat {{ seatIndex + 1 }}</span>
+          <span class="empty-label">Seat {{ displaySeatNumber }}</span>
         </template>
       </div>
     </template>
 
     <div style="width: 220px;">
       <n-select
+        ref="selectRef"
+        :value="null"
         filterable
         :show="showPopover"
         placeholder="Assign guest…"
