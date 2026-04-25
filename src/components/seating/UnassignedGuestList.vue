@@ -6,6 +6,7 @@ import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
 
 import { useGuestStore } from '@/stores/useGuestStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 
 defineProps<{ guests: Guest[] }>()
 const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
@@ -13,6 +14,7 @@ const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
 const guestStore = useGuestStore()
 const groupStore = useGroupStore()
 const configStore = useAppConfigStore()
+const i18n = useI18nStore()
 
 function onResizeStart(event: MouseEvent) {
   event.preventDefault()
@@ -90,7 +92,7 @@ function onDoubleClick(guestId: string) {
       <div class="resize-handle" @mousedown="onResizeStart" />
       <div class="list-content">
         <n-text depth="2" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 8px;">
-          Unassigned ({{ guests.length }})
+          {{ i18n.t('unassigned') }} ({{ guests.length }})
         </n-text>
         <div
           v-for="guest in guests"
@@ -112,17 +114,17 @@ function onDoubleClick(guestId: string) {
             />
             <span class="guest-name">{{ guest.firstName }} {{ guest.lastName }}</span>
             <template v-if="guest.customEmoji">
-              <span :title="guest.customEmoji">{{ guest.customEmoji }}</span>
+              <span :title="i18n.t('custom_emoji')">{{ guest.customEmoji }}</span>
             </template>
             <template v-else>
-              <span v-if="guest.isGroom" title="Groom">🤵</span>
-              <span v-if="guest.isBride" title="Bride">👰</span>
-              <span v-if="guest.isChild" title="Child">👶</span>
+              <span v-if="guest.isGroom" :title="i18n.t('groom')">🤵</span>
+              <span v-if="guest.isBride" :title="i18n.t('bride')">👰</span>
+              <span v-if="guest.isChild" :title="i18n.t('child')">👶</span>
             </template>
           </div>
           <RSVPBadge :status="guest.rsvpStatus" />
         </div>
-        <n-text v-if="guests.length === 0" depth="3" style="font-size: 12px;">All guests assigned 🎉</n-text>
+        <n-text v-if="guests.length === 0" depth="3" style="font-size: 12px;">{{ i18n.t('all_guests_assigned') }}</n-text>
       </div>
     </div>
   </Transition>

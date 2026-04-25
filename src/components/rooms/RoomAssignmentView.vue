@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NGrid, NGi, NCard, NSpace, NTag, NText, NScrollbar } from 'naive-ui'
+import { NGrid, NGi, NCard, NSpace, NTag, NText, NScrollbar, NButton, NIcon } from 'naive-ui'
+import { UserPlus, Edit } from 'lucide-vue-next'
 import { useRoomStore } from '@/stores/useRoomStore'
 import { useGuestStore } from '@/stores/useGuestStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 import type { Room, Guest } from '@/types'
 import RoomGuestList from './RoomGuestList.vue'
 
 const roomStore = useRoomStore()
 const guestStore = useGuestStore()
+const i18n = useI18nStore()
 
 const isOverRoomId = ref<string | null>(null)
 
@@ -43,10 +46,14 @@ function getGuest(id: string): Guest | undefined {
 
 function formatRoomType(type: string) {
   if (!type) return ''
-  return type.charAt(0).toUpperCase() + type.slice(1)
+  return i18n.t(type.toLowerCase())
 }
 
-const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
+const emit = defineEmits<{ 
+  (e: 'edit-guest', id: string): void;
+  (e: 'assign-guests', room: Room): void;
+  (e: 'edit-room', room: Room): void;
+}>()
 </script>
 
 <template>
@@ -68,11 +75,19 @@ const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
                 @dragleave="onDragLeave"
                 @drop="onDrop($event, room)"
               >
-                <n-card :title="`Room ${room.number}`" size="small" :bordered="false">
+                <n-card :title="`${i18n.t('room')} ${room.number}`" size="small" :bordered="false">
                   <template #header-extra>
-                    <n-tag :type="room.guestIds.length >= room.capacity ? 'error' : 'success'" size="small">
-                      {{ room.guestIds.length }} / {{ room.capacity }}
-                    </n-tag>
+                    <n-space align="center" :size="4">
+                      <n-button quaternary circle size="tiny" @click="emit('assign-guests', room)">
+                        <template #icon><n-icon :component="UserPlus" /></template>
+                      </n-button>
+                      <n-button quaternary circle size="tiny" @click="emit('edit-room', room)">
+                        <template #icon><n-icon :component="Edit" /></template>
+                      </n-button>
+                      <n-tag :type="room.guestIds.length >= room.capacity ? 'error' : 'success'" size="small">
+                        {{ room.guestIds.length }} / {{ room.capacity }}
+                      </n-tag>
+                    </n-space>
                   </template>
 
                   <n-space vertical size="small">
@@ -90,7 +105,7 @@ const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
                         <button class="unassign-btn" @click="unassign(gid)">×</button>
                       </div>
                       <div v-if="room.guestIds.length === 0" class="empty-placeholder">
-                        Drop guests here
+                        {{ i18n.t('drop_guests_here') }}
                       </div>
                     </div>
                   </n-space>

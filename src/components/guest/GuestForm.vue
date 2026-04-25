@@ -11,6 +11,7 @@ import type { Guest, RSVPStatus, MenuItem } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useMenuStore } from '@/stores/useMenuStore'
 import { useGroupStore } from '@/stores/useGroupStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 
 const props = defineProps<{
   initial?: Partial<Guest>
@@ -21,6 +22,7 @@ const emit = defineEmits<{ (e: 'submit', guest: Omit<Guest, 'id' | 'createdAt'>)
 const guestStore = useGuestStore()
 const menuStore = useMenuStore()
 const groupStore = useGroupStore()
+const i18n = useI18nStore()
 
 const form = ref({
   firstName: props.initial?.firstName ?? '',
@@ -41,11 +43,11 @@ const form = ref({
   isChildrenSeatAdjoining: props.initial?.isChildrenSeatAdjoining ?? false,
 })
 
-const rsvpOptions = [
-  { label: 'Pending', value: 'pending' },
-  { label: 'Confirmed', value: 'confirmed' },
-  { label: 'Declined', value: 'declined' },
-]
+const rsvpOptions = computed(() => [
+  { label: i18n.t('pending'), value: 'pending' },
+  { label: i18n.t('confirmed'), value: 'confirmed' },
+  { label: i18n.t('declined'), value: 'declined' },
+])
 
 const mealOptions = computed(() =>
   menuStore.menuOptions.map((o: MenuItem) => ({ label: `${o.emoji} ${o.label}`, value: o.id }))
@@ -105,14 +107,14 @@ function onEmojiSelect(emoji: any) {
 <template>
   <n-form :model="form" label-placement="top">
     <n-space>
-      <n-form-item label="First Name" style="flex:1; min-width:140px">
-        <n-input v-model:value="form.firstName" placeholder="First name" />
+      <n-form-item :label="i18n.t('first_name')" style="flex:1; min-width:140px">
+        <n-input v-model:value="form.firstName" :placeholder="i18n.t('first_name')" />
       </n-form-item>
-      <n-form-item label="Last Name" style="flex:1; min-width:140px">
-        <n-input v-model:value="form.lastName" placeholder="Last name" />
+      <n-form-item :label="i18n.t('last_name')" style="flex:1; min-width:140px">
+        <n-input v-model:value="form.lastName" :placeholder="i18n.t('last_name')" />
       </n-form-item>
     </n-space>
-    <n-form-item label="Group">
+    <n-form-item :label="i18n.t('group')">
       <n-select
         v-model:value="form.groupId"
         :options="groupOptions"
@@ -120,29 +122,29 @@ function onEmojiSelect(emoji: any) {
         :render-label-single="renderSingleSelectLabel"
         filterable
         clearable
-        placeholder="Select group"
+        :placeholder="i18n.t('select_group')"
       />
     </n-form-item>
-    <n-form-item label="RSVP Status">
+    <n-form-item :label="i18n.t('rsvp_status')">
       <n-select v-model:value="form.rsvpStatus" :options="rsvpOptions" />
     </n-form-item>
-    <n-form-item label="Meal Choice">
-      <n-select v-model:value="form.mealChoiceId" :options="mealOptions" clearable placeholder="Select meal" />
+    <n-form-item :label="i18n.t('meal_choice')">
+      <n-select v-model:value="form.mealChoiceId" :options="mealOptions" clearable :placeholder="i18n.t('select_meal')" />
     </n-form-item>
-    <n-form-item label="Dietary Notes">
-      <n-input v-model:value="form.dietaryNotes" placeholder="Nut allergy, gluten-free, etc." />
+    <n-form-item :label="i18n.t('dietary_notes')">
+      <n-input v-model:value="form.dietaryNotes" :placeholder="i18n.t('dietary_notes')" />
     </n-form-item>
     <n-space>
-      <n-form-item label="Role">
+      <n-form-item :label="i18n.t('role')">
         <n-space>
-          <n-checkbox v-model:checked="form.isGroom">Groom</n-checkbox>
-          <n-checkbox v-model:checked="form.isBride">Bride</n-checkbox>
-          <n-checkbox v-model:checked="form.isChild">Child</n-checkbox>
+          <n-checkbox v-model:checked="form.isGroom">{{ i18n.t('groom') }}</n-checkbox>
+          <n-checkbox v-model:checked="form.isBride">{{ i18n.t('bride') }}</n-checkbox>
+          <n-checkbox v-model:checked="form.isChild">{{ i18n.t('child') }}</n-checkbox>
         </n-space>
       </n-form-item>
-      <n-form-item label="Custom Emoji" style="width: 140px">
+      <n-form-item :label="i18n.t('custom_emoji')" style="width: 140px">
         <n-input-group>
-          <n-input v-model:value="form.customEmoji" placeholder="e.g. 🐶" clearable />
+          <n-input v-model:value="form.customEmoji" :placeholder="i18n.t('placeholder_emoji')" clearable />
           <n-popover trigger="click" placement="bottom-end" :width="300" scrollable>
             <template #trigger>
               <n-button ghost style="padding: 0 8px">
@@ -153,7 +155,7 @@ function onEmojiSelect(emoji: any) {
           </n-popover>
         </n-input-group>
       </n-form-item>
-      <n-form-item v-if="form.isChild" label="Parent" style="flex:1; min-width:200px">
+      <n-form-item v-if="form.isChild" :label="i18n.t('parent')" style="flex:1; min-width:200px">
         <n-space vertical>
           <n-select
             v-model:value="form.parentId"
@@ -162,15 +164,15 @@ function onEmojiSelect(emoji: any) {
             :render-label-single="renderSingleSelectLabel"
             filterable
             clearable
-            placeholder="Select parent"
+            :placeholder="i18n.t('select_parent')"
           />
           <n-checkbox v-if="form.parentId" v-model:checked="form.isChildrenSeatAdjoining">
-            Adjoining Seat (Small badge on diagonal)
+            {{ i18n.t('adjoining_seat') }}
           </n-checkbox>
         </n-space>
       </n-form-item>
     </n-space>
-    <n-form-item label="Partner">
+    <n-form-item :label="i18n.t('partner')">
       <n-select
         v-model:value="form.partnerId"
         :options="primaryGuestOptions"
@@ -178,21 +180,21 @@ function onEmojiSelect(emoji: any) {
         :render-label-single="renderSingleSelectLabel"
         filterable
         clearable
-        placeholder="Select partner"
+        :placeholder="i18n.t('select_partner')"
       />
     </n-form-item>
-    <n-form-item label="Notes">
-      <n-input v-model:value="form.notes" type="textarea" :rows="2" placeholder="Any notes…" />
+    <n-form-item :label="i18n.t('notes')">
+      <n-input v-model:value="form.notes" type="textarea" :rows="2" :placeholder="i18n.t('notes')" />
     </n-form-item>
 
     <n-space justify="end">
-      <n-button @click="emit('cancel')">Cancel</n-button>
+      <n-button @click="emit('cancel')">{{ i18n.t('cancel') }}</n-button>
       <n-button
         type="primary"
         :disabled="!form.firstName.trim()"
         @click="emit('submit', form)"
       >
-        {{ submitLabel ?? 'Save' }}
+        {{ submitLabel ?? i18n.t('save') }}
       </n-button>
     </n-space>
   </n-form>

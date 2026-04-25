@@ -4,6 +4,7 @@ import { NButton, NTabs, NTabPane, NRadioGroup, NRadioButton, NSwitch, NButtonGr
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 import type { Guest } from '@/types'
 import TableCard from '@/components/seating/TableCard.vue'
 import AerialTableView from '@/components/seating/AerialTableView.vue'
@@ -16,6 +17,7 @@ import EmptyState from '@/components/shared/EmptyState.vue'
 const seatingStore = useSeatingStore()
 const guestStore = useGuestStore()
 const configStore = useAppConfigStore()
+const i18n = useI18nStore()
 
 const showAddModal = ref(false)
 
@@ -152,23 +154,23 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
             :type="configStore.isGuestSidebarOpen ? 'primary' : 'default'"
             @click="configStore.isGuestSidebarOpen = !configStore.isGuestSidebarOpen"
           >
-            {{ configStore.isGuestSidebarOpen ? 'Hide' : 'Show' }} Unassigned
+            {{ configStore.isGuestSidebarOpen ? i18n.t('hide') : i18n.t('show') }} {{ i18n.t('unassigned') }}
           </n-button>
           <n-button v-if="configStore.seatingActiveTab === 'tables' || configStore.seatingActiveTab === 'floorplan'" type="primary" size="small" @click="showAddModal = true">
-            + Add Table
+            + {{ i18n.t('add_table') }}
           </n-button>
         </div>
       </template>
 
       <!-- ── Tables tab ─────────────────────────────────────────────────────── -->
-      <n-tab-pane name="tables" tab="Tables">
+      <n-tab-pane name="tables" :tab="i18n.t('table')">
         <div style="position: relative; overflow: hidden; border-radius: 8px;">
           <div style="display: flex; gap: 16px; align-items: flex-start; padding-right: 0;">
             <div style="flex: 1;">
               <EmptyState
                 v-if="seatingStore.tables.length === 0"
-                icon="🪑" title="No tables yet"
-                description="Click '+ Add Table' to start laying out your seating."
+                icon="🪑" :title="i18n.t('no_tables_yet')"
+                :description="i18n.t('add_table_instruction')"
               />
               <div v-else class="tables-grid">
                 <TableCard
@@ -185,7 +187,7 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
       </n-tab-pane>
 
       <!-- ── Floor Plan tab ─────────────────────────────────────────────────── -->
-      <n-tab-pane name="floorplan" tab="Floor Plan">
+      <n-tab-pane name="floorplan" :tab="i18n.t('floor_plan')">
         <div style="display: flex; flex-direction: column; gap: 16px;">
           <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; background: white; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
             <div style="display: flex; gap: 8px; align-items: center;">
@@ -194,34 +196,34 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
                 size="small"
                 @click="configStore.isLinkingMode = !configStore.isLinkingMode"
               >
-                {{ configStore.isLinkingMode ? 'Disable' : 'Enable' }} Linking Mode
+                {{ configStore.isLinkingMode ? i18n.t('disable') : i18n.t('enable') }} {{ i18n.t('linking_mode') }}
               </n-button>
               
               <template v-if="configStore.isLinkingMode">
                 <n-radio-group v-model:value="configStore.linkingModeType" size="small">
-                  <n-radio-button value="partner">Partner Mode</n-radio-button>
-                  <n-radio-button value="child">Child Mode</n-radio-button>
+                  <n-radio-button value="partner">{{ i18n.t('partner_mode') }}</n-radio-button>
+                  <n-radio-button value="child">{{ i18n.t('child_mode') }}</n-radio-button>
                 </n-radio-group>
               </template>
             </div>
 
             <div style="display: flex; gap: 16px; align-items: center; border-left: 1px solid #e2e8f0; padding-left: 16px;">
               <div style="display: flex; gap: 8px; align-items: center;">
-                <span style="font-size: 13px; color: #64748b;">Partners</span>
+                <span style="font-size: 13px; color: #64748b;">{{ i18n.t('partners') }}</span>
                 <n-switch v-model:value="configStore.showRelationLines" size="small" />
               </div>
               <div style="display: flex; gap: 8px; align-items: center;">
-                <span style="font-size: 13px; color: #64748b;">Parental</span>
+                <span style="font-size: 13px; color: #64748b;">{{ i18n.t('parental') }}</span>
                 <n-switch v-model:value="configStore.showParentalLines" size="small" />
               </div>
             </div>
 
             <div style="font-size: 13px; color: #64748b; flex: 1;">
               <template v-if="configStore.isLinkingMode">
-                {{ configStore.linkingModeType === 'partner' ? 'Drag onto someone to make them partners.' : 'Drag a child guest onto their parent.' }}
+                {{ configStore.linkingModeType === 'partner' ? i18n.t('drag_partner') : i18n.t('drag_child') }}
               </template>
               <template v-else>
-                Enable linking mode to set relations by dragging.
+                {{ i18n.t('enable_linking_instruction') }}
               </template>
             </div>
 
@@ -231,7 +233,7 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
               :type="configStore.isGuestSidebarOpen ? 'primary' : 'default'"
               @click="configStore.isGuestSidebarOpen = !configStore.isGuestSidebarOpen"
             >
-              {{ configStore.isGuestSidebarOpen ? 'Hide' : 'Show' }} Unassigned
+              {{ configStore.isGuestSidebarOpen ? i18n.t('hide') : i18n.t('show') }} {{ i18n.t('unassigned') }}
             </n-button>
           </div>
           </div>
@@ -253,8 +255,8 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
               >
                 <EmptyState
                   v-if="seatingStore.tables.length === 0"
-                  icon="🪑" title="No tables yet"
-                  description="Switch to the Tables tab to add tables."
+                  icon="🪑" :title="i18n.t('no_tables_yet')"
+                  :description="i18n.t('floor_plan_instruction')"
                 />
                 <RelationArcs />
                 <AerialTableView
@@ -279,7 +281,7 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
 
               <div class="canvas-controls top-center">
                 <n-button size="small" @click="centerCanvas">
-                  Center Canvas
+                  {{ i18n.t('center_canvas') }}
                 </n-button>
               </div>
             </div>

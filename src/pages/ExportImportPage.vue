@@ -3,9 +3,11 @@ import { ref } from 'vue'
 import type { UploadFileInfo } from 'naive-ui'
 import { NCard, NButton, NSpace, NText, NAlert, NUpload, NUploadDragger } from 'naive-ui'
 import { useStateSnapshot } from '@/composables/useStateSnapshot'
+import { useI18nStore } from '@/stores/useI18nStore'
 import ConfirmModal from '@/components/shared/ConfirmModal.vue'
 
 const { exportSnapshot, importSnapshot } = useStateSnapshot()
+const i18n = useI18nStore()
 
 const pendingFile = ref<File | null>(null)
 const showConfirm = ref(false)
@@ -26,26 +28,26 @@ async function confirmImport() {
   successMsg.value = ''
   const err = await importSnapshot(pendingFile.value)
   if (err) errorMsg.value = err
-  else successMsg.value = 'Data imported successfully!'
+  else successMsg.value = i18n.t('import_success')
   pendingFile.value = null
 }
 </script>
 
 <template>
   <div style="max-width: 560px;">
-    <h2 style="margin: 0 0 20px;">Export / Import</h2>
+    <h2 style="margin: 0 0 20px;">{{ i18n.t('export_import') }}</h2>
 
-    <n-card title="Export" style="margin-bottom: 20px;">
+    <n-card :title="i18n.t('export')" style="margin-bottom: 20px;">
       <n-space vertical>
-        <n-text>Download a complete snapshot of all your wedding data as a JSON file. Use this for backups or to transfer data to another device.</n-text>
-        <n-button type="primary" @click="exportSnapshot">⬇️ Download JSON</n-button>
+        <n-text>{{ i18n.t('export_description') }}</n-text>
+        <n-button type="primary" @click="exportSnapshot">⬇️ {{ i18n.t('download_json') }}</n-button>
       </n-space>
     </n-card>
 
-    <n-card title="Import">
+    <n-card :title="i18n.t('import')">
       <n-space vertical>
-        <n-alert type="warning" title="Warning" :show-icon="true">
-          Importing will <strong>replace all current data</strong>. Export first if you want a backup.
+        <n-alert type="warning" :title="i18n.t('warning')" :show-icon="true">
+          <span v-html="i18n.t('import_warning')"></span>
         </n-alert>
 
         <n-alert v-if="errorMsg" type="error">{{ errorMsg }}</n-alert>
@@ -59,7 +61,7 @@ async function confirmImport() {
           <n-upload-dragger>
             <div style="padding: 24px; text-align: center;">
               <div style="font-size: 32px; margin-bottom: 8px;">📂</div>
-              <n-text>Drop a wedding JSON file here, or click to select</n-text>
+              <n-text>{{ i18n.t('drop_json') }}</n-text>
             </div>
           </n-upload-dragger>
         </n-upload>
@@ -68,8 +70,8 @@ async function confirmImport() {
 
     <ConfirmModal
       :show="showConfirm"
-      message="This will replace ALL current data with the contents of the imported file. This cannot be undone."
-      confirm-text="Replace"
+      :message="i18n.t('import_confirm_message')"
+      :confirm-text="i18n.t('replace')"
       confirm-type="warning"
       @confirm="confirmImport"
       @cancel="showConfirm = false; pendingFile = null"

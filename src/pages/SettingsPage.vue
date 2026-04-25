@@ -5,10 +5,12 @@ import {
 } from 'naive-ui'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import { useGroupStore } from '@/stores/useGroupStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 import type { GuestGroup } from '@/types'
 
 const config = useAppConfigStore()
 const groupStore = useGroupStore()
+const i18n = useI18nStore()
 
 // Group add
 const newGroupName = ref('')
@@ -44,26 +46,26 @@ function cancelEdit() {
 
 <template>
   <div style="max-width: 600px;">
-    <h2 style="margin: 0 0 20px;">Settings</h2>
+    <h2 style="margin: 0 0 20px;">{{ i18n.t('settings') }}</h2>
 
     <!-- Wedding Info -->
-    <n-card title="Wedding Info" style="margin-bottom: 20px;">
+    <n-card :title="i18n.t('wedding_info')" style="margin-bottom: 20px;">
       <n-form :model="config" label-placement="top">
-        <n-form-item label="Couple Name">
-          <n-input v-model:value="config.coupleName" placeholder="Alex & Jordan" />
+        <n-form-item :label="i18n.t('couple_name')">
+          <n-input v-model:value="config.coupleName" :placeholder="i18n.t('placeholder_couple')" />
         </n-form-item>
-        <n-form-item label="Wedding Date (YYYY-MM-DD)">
-          <n-input v-model:value="config.weddingDate as string" placeholder="2026-09-12" />
+        <n-form-item :label="i18n.t('wedding_date_format')">
+          <n-input v-model:value="config.weddingDate as string" :placeholder="i18n.t('placeholder_date')" />
         </n-form-item>
-        <n-form-item label="Venue">
-          <n-input v-model:value="config.venue" placeholder="The Grand Ballroom, New York" />
+        <n-form-item :label="i18n.t('venue')">
+          <n-input v-model:value="config.venue" :placeholder="i18n.t('venue')" />
         </n-form-item>
       </n-form>
-      <n-text depth="3" style="font-size: 12px;">Changes are saved automatically.</n-text>
+      <n-text depth="3" style="font-size: 12px;">{{ i18n.t('saved_automatically') }}</n-text>
     </n-card>
 
     <!-- Guest Groups -->
-    <n-card title="Guest Groups" style="margin-bottom: 20px;">
+    <n-card :title="i18n.t('guest_groups')" style="margin-bottom: 20px;">
       <div class="group-grid">
         <div v-for="group in groupStore.groups" :key="group.id" class="group-card">
 
@@ -78,7 +80,7 @@ function cancelEdit() {
               @keyup.escape="cancelEdit"
             />
             <span v-else class="group-card-name">{{ group.name }}</span>
-            <label class="color-swatch" :style="{ background: group.color }" title="Change color">
+            <label class="color-swatch" :style="{ background: group.color }" :title="i18n.t('change_color')">
               <input
                 type="color"
                 :value="group.color"
@@ -90,16 +92,16 @@ function cancelEdit() {
           <!-- Actions -->
           <div class="group-card-actions">
             <template v-if="editingGroupId === group.id">
-              <n-button size="tiny" type="primary" @click="saveEdit(group.id)">Save</n-button>
-              <n-button size="tiny" @click="cancelEdit">Cancel</n-button>
+              <n-button size="tiny" type="primary" @click="saveEdit(group.id)">{{ i18n.t('save') }}</n-button>
+              <n-button size="tiny" @click="cancelEdit">{{ i18n.t('cancel') }}</n-button>
             </template>
             <template v-else>
-              <n-button size="tiny" @click="startEdit(group)">Edit</n-button>
+              <n-button size="tiny" @click="startEdit(group)">{{ i18n.t('edit') }}</n-button>
               <n-popconfirm @positive-click="groupStore.deleteGroup(group.id)">
                 <template #trigger>
-                  <n-button size="tiny" type="error" ghost>Remove</n-button>
+                  <n-button size="tiny" type="error" ghost>{{ i18n.t('remove') }}</n-button>
                 </template>
-                Remove this group? Guests will become ungrouped.
+                {{ i18n.t('remove_group_confirm') }}
               </n-popconfirm>
             </template>
           </div>
@@ -107,7 +109,7 @@ function cancelEdit() {
       </div>
 
       <n-text v-if="groupStore.groups.length === 0" depth="3" style="display:block; margin-bottom:12px">
-        No groups yet.
+        {{ i18n.t('no_groups_yet') }}
       </n-text>
 
       <n-divider />
@@ -115,14 +117,14 @@ function cancelEdit() {
       <!-- Add new group -->
       <div class="add-group-row">
         <div class="add-group-color-wrap">
-          <span class="field-label">Color</span>
+          <span class="field-label">{{ i18n.t('color') }}</span>
           <label class="color-swatch" :style="{ background: newGroupColor }">
             <input type="color" v-model="newGroupColor" />
           </label>
         </div>
         <div class="add-group-name-wrap">
-          <span class="field-label">Name</span>
-          <n-input v-model:value="newGroupName" placeholder="e.g. Colleagues" @keyup.enter="addGroup" />
+          <span class="field-label">{{ i18n.t('name') }}</span>
+          <n-input v-model:value="newGroupName" :placeholder="i18n.t('name')" @keyup.enter="addGroup" />
         </div>
         <n-button
           type="primary"
@@ -130,7 +132,7 @@ function cancelEdit() {
           style="align-self: flex-end"
           @click="addGroup"
         >
-          Add Group
+          {{ i18n.t('add_group') }}
         </n-button>
       </div>
     </n-card>

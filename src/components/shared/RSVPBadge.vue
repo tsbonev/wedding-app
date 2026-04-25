@@ -2,16 +2,19 @@
 import { computed } from 'vue'
 import { NTag } from 'naive-ui'
 import type { RSVPStatus } from '@/types'
+import { useI18nStore } from '@/stores/useI18nStore'
 
 const props = defineProps<{ status: RSVPStatus }>()
+const i18n = useI18nStore()
 
-const map: Record<RSVPStatus, { type: 'success' | 'error' | 'warning'; label: string }> = {
-  confirmed: { type: 'success', label: 'Confirmed' },
-  declined: { type: 'error', label: 'Declined' },
-  pending: { type: 'warning', label: 'Pending' },
-}
-
-const tag = computed(() => map[props.status])
+const tag = computed(() => {
+  const map: Record<RSVPStatus, { type: 'success' | 'error' | 'warning'; label: string }> = {
+    confirmed: { type: 'success', label: i18n.t('confirmed') },
+    declined: { type: 'error', label: i18n.t('declined') },
+    pending: { type: 'warning', label: i18n.t('pending') },
+  }
+  return map[props.status]
+})
 </script>
 
 <template>

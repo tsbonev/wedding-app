@@ -4,12 +4,14 @@ import { NText, NInput, NIcon } from 'naive-ui'
 import { Search } from 'lucide-vue-next'
 import type { Guest } from '@/types'
 import { useGroupStore } from '@/stores/useGroupStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
 
 const props = defineProps<{ guests: Guest[] }>()
 const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
 
 const groupStore = useGroupStore()
+const i18n = useI18nStore()
 const searchQuery = ref('')
 
 const filteredGuests = computed(() => {
@@ -43,11 +45,11 @@ function onDoubleClick(guestId: string) {
   <div class="room-guest-sidebar">
     <div style="padding: 16px 12px 0;">
       <n-text depth="2" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 8px; padding: 0 4px;">
-        Unassigned ({{ guests.length }})
+        {{ i18n.t('unassigned') }} ({{ guests.length }})
       </n-text>
       <n-input
         v-model:value="searchQuery"
-        placeholder="Search guests..."
+        :placeholder="i18n.t('search_guests')"
         size="small"
         clearable
         style="margin-bottom: 8px;"
@@ -79,7 +81,7 @@ function onDoubleClick(guestId: string) {
         <RSVPBadge :status="guest.rsvpStatus" size="small" />
       </div>
       <div v-if="filteredGuests.length === 0" style="padding: 20px; text-align: center; color: #999; font-size: 12px;">
-        {{ searchQuery ? 'No matching guests' : 'All guests assigned' }}
+        {{ searchQuery ? i18n.t('no_matching_guests') : i18n.t('all_guests_assigned') }}
       </div>
     </div>
   </div>

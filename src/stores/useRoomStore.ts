@@ -19,6 +19,22 @@ export const useRoomStore = defineStore('rooms', () => {
     }
   }
 
+  function removeRoomType(type: string) {
+    roomTypes.value = roomTypes.value.filter(t => t !== type)
+    // Optional: could also update rooms that use this type to 'unassigned' or similar
+  }
+
+  function updateRoomType(oldType: string, newType: string) {
+    const idx = roomTypes.value.indexOf(oldType)
+    if (idx !== -1 && newType && !roomTypes.value.includes(newType)) {
+      roomTypes.value[idx] = newType
+      // Update all rooms that use the old type
+      rooms.value.forEach(r => {
+        if (r.type === oldType) r.type = newType
+      })
+    }
+  }
+
   function updateRoom(id: string, patch: Partial<Room>) {
     const idx = rooms.value.findIndex((r) => r.id === id)
     if (idx !== -1) rooms.value[idx] = { ...rooms.value[idx], ...patch }
@@ -59,5 +75,5 @@ export const useRoomStore = defineStore('rooms', () => {
     rooms.value = list
   }
 
-  return { rooms, roomTypes, getById, addRoom, addRoomType, updateRoom, deleteRoom, assignGuests, unassignGuest, bulkReplace }
+  return { rooms, roomTypes, getById, addRoom, addRoomType, removeRoomType, updateRoomType, updateRoom, deleteRoom, assignGuests, unassignGuest, bulkReplace }
 }, { persist: true })

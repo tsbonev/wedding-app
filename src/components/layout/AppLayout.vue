@@ -20,21 +20,22 @@ window.addEventListener('resize', () => { isMobile.value = window.innerWidth < 7
       :collapsed="collapsed"
       collapse-mode="width"
       :collapsed-width="64"
-      :width="220"
+      :width="280"
       show-trigger
       @collapse="collapsed = true"
       @expand="collapsed = false"
       bordered
+      content-style="display: flex; flex-direction: column; height: 100vh;"
     >
       <AppHeader :collapsed="collapsed" />
-      <AppSidebar />
+      <AppSidebar :collapsed="collapsed" />
     </n-layout-sider>
 
     <!-- mobile drawer -->
-    <n-drawer v-if="isMobile" v-model:show="drawerOpen" :width="220" placement="left">
-      <n-drawer-content>
+    <n-drawer v-if="isMobile" v-model:show="drawerOpen" :width="280" placement="left">
+      <n-drawer-content body-content-style="padding: 0; display: flex; flex-direction: column; height: 100%;">
         <AppHeader :collapsed="false" />
-        <AppSidebar />
+        <AppSidebar :collapsed="false" />
       </n-drawer-content>
     </n-drawer>
 

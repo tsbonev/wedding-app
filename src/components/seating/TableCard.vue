@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { NCard, NButton, NPopconfirm, NInputNumber, NSpace, NInput, NCheckbox, useDialog } from 'naive-ui'
 import type { Table, SeatOriginCorner } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 import SeatBadge from './SeatBadge.vue'
 
 const props = defineProps<{ table: Table }>()
@@ -11,16 +12,30 @@ const emit = defineEmits<{
   (e: 'edit-guest', id: string): void
 }>()
 const seatingStore = useSeatingStore()
+const i18n = useI18nStore()
 const dialog = useDialog()
 const isConfirming = ref(false)
 const localCapacity = ref(props.table.capacity)
+const localName = ref(props.table.name)
 
 watch(() => props.table.capacity, (newVal) => {
   localCapacity.value = newVal
 })
 
+watch(() => props.table.name, (newVal) => {
+  localName.value = newVal
+})
+
 function updateDim(key: 'widthCm' | 'lengthCm', val: number | null) {
   seatingStore.updateTable(props.table.id, { [key]: val })
+}
+
+function updateName() {
+  if (localName.value.trim() === '') {
+    localName.value = props.table.name
+    return
+  }
+  seatingStore.updateTable(props.table.id, { name: localName.value })
 }
 
 function toggleShape() {
@@ -36,10 +51,10 @@ function updateCapacity() {
   if (val < assignedGuestsCount) {
     isConfirming.value = true
     dialog.warning({
-      title: 'Confirm Capacity Change',
-      content: `Reducing capacity to ${val} will unassign ${assignedGuestsCount - val} guests. Are you sure?`,
-      positiveText: 'Confirm',
-      negativeText: 'Cancel',
+      title: i18n.t('confirm_capacity_change'),
+      content: i18n.t('capacity_change_warning').replace('{val}', String(val)).replace('{count}', String(assignedGuestsCount - val)),
+      positiveText: i18n.t('confirmed'),
+      negativeText: i18n.t('cancel'),
       onPositiveClick: () => {
         seatingStore.resizeTable(props.table.id, val)
         isConfirming.value = false
@@ -99,17 +114,18 @@ const sortedSeats = computed(() =>
   <n-card size="small" style="width: 220px;">
     <template #header>
       <n-input
-        :value="table.name"
+        v-model:value="localName"
         size="small"
         style="font-weight: 600;"
-        @update:value="seatingStore.updateTable(table.id, { name: $event })"
+        @blur="updateName"
+        @keyup.enter="updateName"
       />
     </template>
     <template #header-extra>
       <div style="display: flex; align-items: center; gap: 4px;">
         <span
           style="font-size: 16px; cursor: pointer; user-select: none;"
-          title="Click to toggle shape"
+          :title="i18n.t('toggle_shape')"
           @click="toggleShape"
         >
           {{ table.shape === 'round' ? '⚪' : '⬜' }}
@@ -130,22 +146,22 @@ const sortedSeats = computed(() =>
     <div class="table-dims-edit-top">
       <n-space size="small">
         <div v-if="table.shape === 'rectangular'">
-          <div class="dim-label">Length</div>
+          <div class="dim-label">{{ i18n.t('length') }}</div>
           <n-input-number
             :value="table.lengthCm"
             size="tiny"
-            placeholder="Len"
+            :placeholder="i18n.t('len')"
             :show-button="false"
             style="width: 50px"
             @update:value="updateDim('lengthCm', $event)"
           />
         </div>
         <div>
-          <div class="dim-label">{{ table.shape === 'rectangular' ? 'Width' : 'Diam' }}</div>
+          <div class="dim-label">{{ table.shape === 'rectangular' ? i18n.t('width') : i18n.t('diam') }}</div>
           <n-input-number
             :value="table.widthCm"
             size="tiny"
-            placeholder="Wid"
+            :placeholder="i18n.t('wid')"
             :show-button="false"
             style="width: 50px"
             @update:value="updateDim('widthCm', $event)"
@@ -157,7 +173,7 @@ const sortedSeats = computed(() =>
             size="small"
             @update:checked="seatingStore.updateTable(table.id, { oneSided: $event })"
           >
-            <span style="font-size: 10px; color: #94a3b8;">1-side</span>
+            <span style="font-size: 10px; color: #94a3b8;">{{ i18n.t('one_side') }}</span>
           </n-checkbox>
         </div>
       </n-space>
@@ -175,9 +191,9 @@ const sortedSeats = computed(() =>
     <template #action>
       <n-popconfirm @positive-click="emit('delete', table.id)">
         <template #trigger>
-          <n-button size="tiny" type="error" ghost>Remove</n-button>
+          <n-button size="tiny" type="error" ghost>{{ i18n.t('remove') }}</n-button>
         </template>
-        Remove this table and unassign all guests?
+        {{ i18n.t('delete_table_confirm') }}
       </n-popconfirm>
     </template>
   </n-card>

@@ -6,12 +6,14 @@ import {
 import type { SelectOption } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useGroupStore } from '@/stores/useGroupStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 
 const props = defineProps<{ show: boolean }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const guestStore = useGuestStore()
 const groupStore = useGroupStore()
+const i18n = useI18nStore()
 
 const namesText = ref('')
 const selectedGroupId = ref<string | null>(null)
@@ -85,27 +87,27 @@ function handleBulkAdd() {
 <template>
   <n-modal :show="show" :mask-closable="false" @update:show="(val) => !val && emit('close')">
     <n-card
-      title="Add Multiple Guests"
+      :title="i18n.t('add_multiple_guests')"
       style="max-width: 520px; width: 95vw;"
       closable
       @close="emit('close')"
     >
       <n-form label-placement="top">
-        <n-form-item label="Names (separated by commas)">
+        <n-form-item :label="i18n.t('names_separated')">
           <n-input
             v-model:value="namesText"
             type="textarea"
             :rows="4"
-            placeholder="John Doe, Jane Smith, Robert De Niro"
+            :placeholder="i18n.t('placeholder_bulk_names')"
           />
           <template #feedback>
             <n-text depth="3" style="font-size: 12px">
-              Format: "First Last". If more than one space, the first space separates first and last name.
+              {{ i18n.t('bulk_add_instruction') }}
             </n-text>
           </template>
         </n-form-item>
         
-        <n-form-item label="Group for all these guests">
+        <n-form-item :label="i18n.t('group_for_all')">
           <n-select
             v-model:value="selectedGroupId"
             :options="groupOptions"
@@ -113,18 +115,18 @@ function handleBulkAdd() {
             :render-label-single="renderSingleSelectLabel"
             filterable
             clearable
-            placeholder="Select group (optional)"
+            :placeholder="i18n.t('select_group_optional')"
           />
         </n-form-item>
 
         <n-space justify="end" style="margin-top: 24px">
-          <n-button @click="emit('close')">Cancel</n-button>
+          <n-button @click="emit('close')">{{ i18n.t('cancel') }}</n-button>
           <n-button
             type="primary"
             :disabled="!namesText.trim()"
             @click="handleBulkAdd"
           >
-            Add Guests
+            {{ i18n.t('add_guests') }}
           </n-button>
         </n-space>
       </n-form>

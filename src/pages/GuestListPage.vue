@@ -9,6 +9,7 @@ import { useMenuStore } from '@/stores/useMenuStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useRoomStore } from '@/stores/useRoomStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 import type { Guest, RSVPStatus, MenuItem } from '@/types'
 import GuestFormModal from '@/components/guest/GuestFormModal.vue'
 import BulkAddModal from '@/components/guest/BulkAddModal.vue'
@@ -20,6 +21,7 @@ const menuStore = useMenuStore()
 const groupStore = useGroupStore()
 const seatingStore = useSeatingStore()
 const roomStore = useRoomStore()
+const i18n = useI18nStore()
 
 // ── Filters ───────────────────────────────────────────────────────────────────
 
@@ -29,23 +31,65 @@ const editingGuest = ref<Guest | undefined>(undefined)
 const search = ref('')
 const rsvpFilter = ref('')
 const groupFilter = ref('')
+const roomFilter = ref('')
+const tableFilter = ref('')
+const ageFilter = ref('')
 
-const rsvpFilterOptions = [
-  { label: 'All RSVP', value: '' },
-  { label: 'Confirmed', value: 'confirmed' },
-  { label: 'Pending', value: 'pending' },
-  { label: 'Declined', value: 'declined' },
-]
+const rsvpFilterOptions = computed(() => [
+  { label: i18n.t('all_rsvp'), value: '' },
+  { label: i18n.t('confirmed'), value: 'confirmed' },
+  { label: i18n.t('pending'), value: 'pending' },
+  { label: i18n.t('declined'), value: 'declined' },
+])
 
 const groupFilterOptions = computed<(SelectOption & { color?: string })[]>(() => [
-  { label: 'All Groups', value: '' },
+  { label: i18n.t('all_groups'), value: '' },
   ...groupStore.groups.map((g) => ({ label: g.name, value: g.id, color: g.color })),
+])
+
+const roomFilterOptions = computed(() => [
+  { label: i18n.t('all_rooms'), value: '' },
+  { label: i18n.t('no_room'), value: 'none' },
+  ...roomStore.rooms.map((r) => ({ label: `${r.number} (${r.type})`, value: r.id })),
+])
+
+const tableFilterOptions = computed(() => [
+  { label: i18n.t('all_tables'), value: '' },
+  { label: i18n.t('no_table'), value: 'none' },
+  ...seatingStore.tables.map((t) => ({ label: t.name, value: t.id })),
+])
+
+const ageFilterOptions = computed(() => [
+  { label: i18n.t('all_ages'), value: '' },
+  { label: i18n.t('adults'), value: 'adults' },
+  { label: i18n.t('children'), value: 'children' },
 ])
 
 const filtered = computed(() => {
   let list = [...guestStore.guests]
   if (rsvpFilter.value) list = list.filter((g) => g.rsvpStatus === rsvpFilter.value)
   if (groupFilter.value) list = list.filter((g) => g.groupId === groupFilter.value)
+  if (roomFilter.value) {
+    if (roomFilter.value === 'none') {
+      list = list.filter((g) => !g.roomId)
+    } else {
+      list = list.filter((g) => g.roomId === roomFilter.value)
+    }
+  }
+  if (tableFilter.value) {
+    if (tableFilter.value === 'none') {
+      list = list.filter((g) => !g.tableId)
+    } else {
+      list = list.filter((g) => g.tableId === tableFilter.value)
+    }
+  }
+  if (ageFilter.value) {
+    if (ageFilter.value === 'adults') {
+      list = list.filter((g) => !g.isChild)
+    } else if (ageFilter.value === 'children') {
+      list = list.filter((g) => g.isChild)
+    }
+  }
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
     list = list.filter((g) =>
@@ -103,19 +147,19 @@ function cancelEdit() {
 
 // ── Select options ────────────────────────────────────────────────────────────
 
-const rsvpCellOptions = [
-  { label: 'Confirmed', value: 'confirmed' },
-  { label: 'Pending', value: 'pending' },
-  { label: 'Declined', value: 'declined' },
-]
+const rsvpCellOptions = computed(() => [
+  { label: i18n.t('confirmed'), value: 'confirmed' },
+  { label: i18n.t('pending'), value: 'pending' },
+  { label: i18n.t('declined'), value: 'declined' },
+])
 
 const mealCellOptions = computed(() => [
-  { label: '— None —', value: '' },
+  { label: `— ${i18n.t('none')} —`, value: '' },
   ...menuStore.menuOptions.map((o: MenuItem) => ({ label: `${o.emoji} ${o.label}`, value: o.id })),
 ])
 
 const groupCellOptions = computed<(SelectOption & { color?: string })[]>(() => [
-  { label: '— None —', value: '' },
+  { label: `— ${i18n.t('none')} —`, value: '' },
   ...groupStore.groups.map((g) => ({ label: g.name, value: g.id, color: g.color })),
 ])
 
@@ -146,7 +190,7 @@ function getMealLabel(id: string | null) {
 function getPartnerLabel(id: string | null) {
   if (!id) return null
   const g = guestStore.getById(id)
-  return g ? `Partner of ${g.firstName} ${g.lastName}` : null
+  return g ? `${i18n.t('partner_of')} ${g.firstName} ${g.lastName}` : null
 }
 
 function getTableName(id: string | null) {
@@ -158,7 +202,7 @@ function getTableName(id: string | null) {
 function getRoomName(id: string | null) {
   if (!id) return '—'
   const r = roomStore.getById(id)
-  return r ? `🏨 Room ${r.number}` : '—'
+  return r ? `🏨 ${i18n.t('room')} ${r.number}` : '—'
 }
 
 function openAdd() {
@@ -175,7 +219,7 @@ function openEdit(guest: Guest) {
 
 const columns = computed<DataTableColumns<Guest>>(() => [
   {
-    title: 'Name',
+    title: i18n.t('first_name'),
     key: 'name',
     render: (row) => {
       if (isEditing(row.id, 'name')) {
@@ -183,7 +227,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
           h(NInput, {
             value: editFirst.value,
             size: 'small',
-            placeholder: 'First',
+            placeholder: i18n.t('first'),
             style: 'flex:1;min-width:0',
             onVnodeMounted: (vnode) => (vnode.el as HTMLElement)?.querySelector('input')?.focus(),
             'onUpdate:value': (v: string) => { editFirst.value = v },
@@ -195,7 +239,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
           h(NInput, {
             value: editLast.value,
             size: 'small',
-            placeholder: 'Last',
+            placeholder: i18n.t('last'),
             style: 'flex:1;min-width:0',
             'onUpdate:value': (v: string) => { editLast.value = v },
             onKeydown: (e: KeyboardEvent) => {
@@ -216,10 +260,10 @@ const columns = computed<DataTableColumns<Guest>>(() => [
             ? h('span', { style: `width:10px;height:10px;border-radius:50%;background:${grp.color};display:inline-block;flex-shrink:0` })
             : null,
           h('span', `${row.firstName} ${row.lastName}`),
-          row.customEmoji ? h('span', { title: 'Custom Role' }, row.customEmoji) : [
-            row.isGroom ? h('span', { title: 'Groom' }, '🤵') : null,
-            row.isBride ? h('span', { title: 'Bride' }, '👰') : null,
-            row.isChild ? h('span', { title: 'Child' }, '👶') : null,
+          row.customEmoji ? h('span', { title: i18n.t('custom_emoji') }, row.customEmoji) : [
+            row.isGroom ? h('span', { title: i18n.t('groom') }, '🤵') : null,
+            row.isBride ? h('span', { title: i18n.t('bride') }, '👰') : null,
+            row.isChild ? h('span', { title: i18n.t('child') }, '👶') : null,
           ],
         ]),
         partnerLabel ? h(NText, { depth: 3, style: 'font-size:11px;margin-top:1px' }, { default: () => partnerLabel }) : null,
@@ -227,7 +271,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
     },
   },
   {
-    title: 'Group',
+    title: i18n.t('group'),
     key: 'group',
     width: 185,
     render: (row) => {
@@ -274,7 +318,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       if (isEditing(row.id, 'rsvp')) {
         return h(NSelect, {
           value: row.rsvpStatus,
-          options: rsvpCellOptions,
+          options: rsvpCellOptions.value,
           size: 'small',
           show: selectOpen.value,
           style: 'width:100%',
@@ -296,7 +340,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
     },
   },
   {
-    title: 'Meal',
+    title: i18n.t('meals'),
     key: 'meal',
     width: 155,
     render: (row) => {
@@ -325,13 +369,13 @@ const columns = computed<DataTableColumns<Guest>>(() => [
     },
   },
   {
-    title: 'Table',
+    title: i18n.t('table'),
     key: 'tableId',
     width: 120,
     render: (row) => row.tableId ? h(NTag, { size: 'small' }, { default: () => getTableName(row.tableId) }) : '—',
   },
   {
-    title: 'Room',
+    title: i18n.t('room'),
     key: 'roomId',
     width: 120,
     render: (row) => row.roomId ? h(NTag, { size: 'small' }, { default: () => getRoomName(row.roomId) }) : '—',
@@ -343,10 +387,10 @@ const columns = computed<DataTableColumns<Guest>>(() => [
     render: (row) =>
       h(NSpace, { size: 8, justify: 'end' }, {
         default: () => [
-          h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => 'Edit' }),
+          h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => i18n.t('edit') }),
           h(NPopconfirm, { onPositiveClick: () => guestStore.deleteGuest(row.id) }, {
-            trigger: () => h(NButton, { size: 'small', type: 'error', ghost: true }, { default: () => 'Delete' }),
-            default: () => 'Delete this guest and their relations?',
+            trigger: () => h(NButton, { size: 'small', type: 'error', ghost: true }, { default: () => i18n.t('delete') }),
+            default: () => i18n.t('delete_confirm'),
           }),
         ],
       }),
@@ -357,31 +401,34 @@ const columns = computed<DataTableColumns<Guest>>(() => [
 <template>
   <div>
     <n-space justify="space-between" align="center" style="margin-bottom: 16px;">
-      <h2 style="margin: 0;">Guests</h2>
+      <h2 style="margin: 0;">{{ i18n.t('guests') }}</h2>
       <n-space>
-        <n-button @click="showBulkModal = true">Add Multiple Guests</n-button>
-        <n-button type="primary" @click="openAdd">+ Add Guest</n-button>
+        <n-button @click="showBulkModal = true">{{ i18n.t('add_multiple_guests') }}</n-button>
+        <n-button type="primary" @click="openAdd">+ {{ i18n.t('add_guest') }}</n-button>
       </n-space>
     </n-space>
 
     <n-space style="margin-bottom: 16px;" wrap>
-      <n-input v-model:value="search" placeholder="Search name…" clearable style="width: 220px" />
-      <n-select v-model:value="rsvpFilter" :options="rsvpFilterOptions" style="width: 140px" />
+      <n-input v-model:value="search" :placeholder="i18n.t('search_name')" clearable style="width: 200px" />
+      <n-select v-model:value="rsvpFilter" :options="rsvpFilterOptions" style="width: 130px" />
       <n-select
         v-model:value="groupFilter"
         :options="groupFilterOptions"
         :render-label="renderGroupLabel"
         :render-label-single="renderSingleSelectLabel"
         filterable
-        style="width: 180px"
+        style="width: 160px"
       />
+      <n-select v-model:value="tableFilter" :options="tableFilterOptions" filterable style="width: 150px" />
+      <n-select v-model:value="roomFilter" :options="roomFilterOptions" filterable style="width: 150px" />
+      <n-select v-model:value="ageFilter" :options="ageFilterOptions" style="width: 130px" />
     </n-space>
 
     <EmptyState
       v-if="guestStore.guests.length === 0"
       icon="👥"
-      title="No guests yet"
-      description="Click 'Add Guest' or 'Add Multiple Guests' to start building your guest list."
+      :title="i18n.t('no_guests_yet')"
+      :description="i18n.t('no_guests_description')"
     />
 
     <n-data-table

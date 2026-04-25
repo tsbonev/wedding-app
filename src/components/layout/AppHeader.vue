@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 
 const props = defineProps<{
   collapsed: boolean
 }>()
 
 const config = useAppConfigStore()
+const i18n = useI18nStore()
 
 const subtitle = computed(() => {
+  const locale = i18n.locale === 'bg' ? 'bg-BG' : 'en-US'
   const parts: string[] = []
-  if (config.weddingDate) parts.push(new Date(config.weddingDate).toLocaleDateString())
+  if (config.weddingDate) parts.push(new Date(config.weddingDate).toLocaleDateString(locale))
   if (config.venue) parts.push(config.venue)
   return parts.join(' · ')
 })
@@ -19,7 +22,7 @@ const subtitle = computed(() => {
 <template>
   <div class="app-header" :class="{ 'is-collapsed': props.collapsed }">
     <template v-if="!props.collapsed">
-      <span class="couple-name">{{ config.coupleName || 'My Wedding' }}</span>
+      <span class="couple-name">{{ config.coupleName || i18n.t('my_wedding') }}</span>
       <span v-if="subtitle" class="subtitle">{{ subtitle }}</span>
     </template>
     <template v-else>
