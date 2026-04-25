@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, h } from 'vue'
 import { NPopover, NSelect } from 'naive-ui'
+import type { SelectOption } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -24,12 +25,22 @@ const groupColor = computed(() => {
   return groupStore.getById(guest.value.groupId)?.color ?? null
 })
 
-const selectOptions = computed(() =>
+const selectOptions = computed((): (SelectOption & { color?: string | null })[] =>
   guestStore.unassignedGuests.map(g => ({
     label: `${g.firstName} ${g.lastName}`,
     value: g.id,
+    color: g.groupId ? (groupStore.getById(g.groupId)?.color ?? null) : null,
   }))
 )
+
+function renderSelectLabel(option: SelectOption & { color?: string | null }) {
+  return h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
+    h('span', {
+      style: `width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block;background:${option.color ?? '#d1d5db'}`,
+    }),
+    h('span', {}, option.label as string),
+  ])
+}
 
 function onDrop(event: DragEvent) {
   event.preventDefault()
@@ -71,11 +82,14 @@ function onSelectGuest(val: string) {
         </template>
       </div>
     </template>
-    <div style="width: 200px;">
+
+    <div style="width: 220px;">
       <n-select
         filterable
+        :show="showPopover"
         placeholder="Assign guest…"
         :options="selectOptions"
+        :render-label="renderSelectLabel"
         @update:value="onSelectGuest"
       />
     </div>

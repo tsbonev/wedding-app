@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { Table } from '@/types'
+import type { Table, SeatOriginCorner } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import AerialSeatToken from './AerialSeatToken.vue'
 
@@ -8,6 +8,8 @@ const props = defineProps<{ table: Table }>()
 const seatingStore = useSeatingStore()
 const isSelected = ref(false)
 const el = ref<HTMLElement | null>(null)
+
+const CORNERS: SeatOriginCorner[] = ['tl', 'tr', 'bl', 'br']
 
 // ── Selection management ───────────────────────────────────────────────────
 
@@ -76,7 +78,6 @@ function onMouseDown(event: MouseEvent) {
     setupOutsideClick()
   }
 
-  // Start drag tracking immediately (select + move in one gesture)
   startX = event.clientX; startY = event.clientY
   origX = props.table.aerialPosX; origY = props.table.aerialPosY
 
@@ -110,20 +111,24 @@ function onMouseDown(event: MouseEvent) {
   window.addEventListener('mouseup', onUp)
 }
 
-// ── Corner drag-to-rotate (snaps to 45° on release) ─────────────────────────
+// ── Corner: drag = rotate (snap 45° on release), click = set seat origin ─────
 
-function onCornerMouseDown(event: MouseEvent) {
+function onCornerMouseDown(event: MouseEvent, corner: SeatOriginCorner) {
   event.stopPropagation()
   event.preventDefault()
 
   const rect = el.value!.getBoundingClientRect()
   const centerX = rect.left + rect.width / 2
   const centerY = rect.top + rect.height / 2
-
+  const startMouseX = event.clientX
+  const startMouseY = event.clientY
   const startAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI)
   const startRotation = props.table.rotation
+  let moved = false
 
   function onMove(e: MouseEvent) {
+    if (!moved && Math.hypot(e.clientX - startMouseX, e.clientY - startMouseY) < 4) return
+    moved = true
     const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
     const delta = angle - startAngle
     const raw = ((startRotation + delta) % 360 + 360) % 360
@@ -131,8 +136,12 @@ function onCornerMouseDown(event: MouseEvent) {
   }
 
   function onUp() {
-    const snapped = (Math.round(props.table.rotation / 45) * 45 + 360) % 360
-    seatingStore.updateTable(props.table.id, { rotation: snapped })
+    if (!moved) {
+      seatingStore.reorderSeatsFromCorner(props.table.id, corner)
+    } else {
+      const snapped = (Math.round(props.table.rotation / 45) * 45 + 360) % 360
+      seatingStore.updateTable(props.table.id, { rotation: snapped })
+    }
     window.removeEventListener('mousemove', onMove)
     window.removeEventListener('mouseup', onUp)
   }
@@ -154,12 +163,15 @@ function onCornerMouseDown(event: MouseEvent) {
     }"
     @mousedown="onMouseDown"
   >
-    <!-- Corner rotation handles (visible when selected) -->
+    <!-- Corner handles (visible when selected): drag = rotate, click = set seat #1 origin -->
     <template v-if="isSelected">
-      <div class="corner-handle tl" title="Drag to rotate" @mousedown="onCornerMouseDown" />
-      <div class="corner-handle tr" title="Drag to rotate" @mousedown="onCornerMouseDown" />
-      <div class="corner-handle bl" title="Drag to rotate" @mousedown="onCornerMouseDown" />
-      <div class="corner-handle br" title="Drag to rotate" @mousedown="onCornerMouseDown" />
+      <div
+        v-for="c in CORNERS" :key="c"
+        class="corner-handle"
+        :class="[c, { 'is-origin': table.seatOriginCorner === c }]"
+        title="Drag to rotate · Click to start seat numbering here"
+        @mousedown="onCornerMouseDown($event, c)"
+      />
     </template>
 
     <!-- ── Rectangular ── -->
@@ -240,18 +252,22 @@ function onCornerMouseDown(event: MouseEvent) {
 /* Corner handles */
 .corner-handle {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 16px;
+  height: 16px;
   background: #3b82f6;
-  border: 1px solid #fff;
-  border-radius: 2px;
+  border: 2px solid #fff;
+  border-radius: 3px;
   cursor: alias;
   z-index: 10;
+  transition: background 0.15s;
 }
-.corner-handle.tl { top: -5px; left: -5px; }
-.corner-handle.tr { top: -5px; right: -5px; }
-.corner-handle.bl { bottom: -5px; left: -5px; }
-.corner-handle.br { bottom: -5px; right: -5px; }
+.corner-handle:hover { background: #2563eb; }
+.corner-handle.tl { top: -8px; left: -8px; }
+.corner-handle.tr { top: -8px; right: -8px; }
+.corner-handle.bl { bottom: -8px; left: -8px; }
+.corner-handle.br { bottom: -8px; right: -8px; }
+.corner-handle.is-origin { background: #f59e0b; }
+.corner-handle.is-origin:hover { background: #d97706; }
 
 /* Rectangular */
 .aerial-rect {

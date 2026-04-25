@@ -30,6 +30,8 @@ export interface Seat {
   guestId: string | null
 }
 
+export type SeatOriginCorner = 'tl' | 'tr' | 'bl' | 'br'
+
 export interface Table {
   id: string
   name: string
@@ -43,6 +45,7 @@ export interface Table {
   aerialPosX: number
   aerialPosY: number
   rotation: number
+  seatOriginCorner: SeatOriginCorner | null
 }
 
 export interface Room {

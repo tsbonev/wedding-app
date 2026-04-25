@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, h } from 'vue'
 import { NTooltip, NPopover, NSelect } from 'naive-ui'
+import type { SelectOption } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useMenuStore } from '@/stores/useMenuStore'
@@ -38,15 +39,25 @@ const fullName = computed(() =>
 )
 
 const selectOptions = computed(() => {
-  const opts = guestStore.unassignedGuests.map(g => ({
+  const opts: (SelectOption & { color?: string | null })[] = guestStore.unassignedGuests.map(g => ({
     label: `${g.firstName} ${g.lastName}`,
     value: g.id,
+    color: g.groupId ? (groupStore.getById(g.groupId)?.color ?? null) : null,
   }))
   if (props.guestId) {
-    opts.unshift({ label: '— Unassign —', value: '__unassign__' })
+    opts.unshift({ label: '— Unassign —', value: '__unassign__', color: null })
   }
   return opts
 })
+
+function renderSelectLabel(option: SelectOption & { color?: string | null }) {
+  return h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
+    h('span', {
+      style: `width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block;background:${option.color ?? '#d1d5db'}`,
+    }),
+    h('span', {}, option.label as string),
+  ])
+}
 
 const isDragOver = ref(false)
 
@@ -140,11 +151,13 @@ function onSelectGuest(val: string) {
       </n-tooltip>
     </template>
 
-    <div style="width: 200px;">
+    <div style="width: 220px;">
       <n-select
         filterable
+        :show="showPopover"
         placeholder="Assign guest…"
         :options="selectOptions"
+        :render-label="renderSelectLabel"
         @update:value="onSelectGuest"
       />
     </div>
