@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { NCard, NTag, NButton, NPopconfirm, NInputNumber, NSpace, NInput } from 'naive-ui'
-import type { Table } from '@/types'
+import type { Table, SeatOriginCorner } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import SeatBadge from './SeatBadge.vue'
 
@@ -16,6 +17,33 @@ function updateCapacity(val: number | null) {
   if (val === null || val < 1) return
   seatingStore.resizeTable(props.table.id, val)
 }
+
+function displayIndex(seatIndex: number): number {
+  const n = props.table.seats.length
+  const half = Math.ceil(n / 2)
+  const corner: SeatOriginCorner | null = props.table.seatOriginCorner
+  const i = seatIndex
+  if (!corner || corner === 'tl') return i
+  if (props.table.shape === 'rectangular') {
+    if (corner === 'tr') return i < half ? half - 1 - i : half + (n - 1 - i)
+    if (corner === 'bl') return i >= half ? i - half : (n - half) + i
+    return n - 1 - i // br
+  }
+  // round
+  const cornerDeg: Record<SeatOriginCorner, number> = { tl: 225, tr: 315, br: 45, bl: 135 }
+  const ca = cornerDeg[corner]
+  let startK = 0; let minDist = Infinity
+  for (let k = 0; k < n; k++) {
+    const deg = ((k / n) * 360 - 90 + 360) % 360
+    let d = Math.abs(deg - ca); if (d > 180) d = 360 - d
+    if (d < minDist) { minDist = d; startK = k }
+  }
+  return (i - startK + n) % n
+}
+
+const sortedSeats = computed(() =>
+  [...props.table.seats].sort((a, b) => displayIndex(a.index) - displayIndex(b.index))
+)
 </script>
 
 <template>
@@ -33,7 +61,7 @@ function updateCapacity(val: number | null) {
     </template>
 
     <SeatBadge
-      v-for="seat in table.seats"
+      v-for="seat in sortedSeats"
       :key="seat.index"
       :table-id="table.id"
       :seat-index="seat.index"

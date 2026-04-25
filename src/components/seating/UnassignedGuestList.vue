@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { NText } from 'naive-ui'
 import type { Guest } from '@/types'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -7,6 +8,29 @@ import RSVPBadge from '@/components/shared/RSVPBadge.vue'
 defineProps<{ guests: Guest[] }>()
 
 const groupStore = useGroupStore()
+
+// ── Drag-to-resize ────────────────────────────────────────────────────────────
+
+const width = ref(220)
+
+function onResizeStart(event: MouseEvent) {
+  event.preventDefault()
+  const startX = event.clientX
+  const startWidth = width.value
+
+  function onMove(e: MouseEvent) {
+    // handle is on the left edge: dragging left = wider
+    width.value = Math.max(160, Math.min(500, startWidth + (startX - e.clientX)))
+  }
+  function onUp() {
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+  }
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+}
+
+// ── Drag-to-assign ────────────────────────────────────────────────────────────
 
 function onDragStart(event: DragEvent, guest: Guest) {
   event.dataTransfer?.setData('guestId', guest.id)
@@ -22,7 +46,8 @@ function groupColor(guest: Guest) {
 </script>
 
 <template>
-  <div class="unassigned-list">
+  <div class="unassigned-list" :style="{ width: width + 'px' }">
+    <div class="resize-handle" @mousedown="onResizeStart" />
     <n-text depth="2" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 8px;">
       Unassigned ({{ guests.length }})
     </n-text>
@@ -39,9 +64,7 @@ function groupColor(guest: Guest) {
           v-if="groupColor(guest)"
           :style="`width:8px; height:8px; border-radius:50%; background:${groupColor(guest)}; flex-shrink:0`"
         />
-        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
-          {{ guest.firstName }} {{ guest.lastName }}
-        </span>
+        <span class="guest-name">{{ guest.firstName }} {{ guest.lastName }}</span>
       </div>
       <RSVPBadge :status="guest.rsvpStatus" />
     </div>
@@ -51,15 +74,28 @@ function groupColor(guest: Guest) {
 
 <style scoped>
 .unassigned-list {
-  width: 200px;
   flex-shrink: 0;
-  padding: 12px;
+  padding: 12px 12px 12px 14px;
   background: #fafafa;
   border: 1px solid #eee;
   border-radius: 8px;
   max-height: calc(100vh - 120px);
   overflow-y: auto;
+  position: relative;
+  box-sizing: border-box;
 }
+.resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  border-radius: 3px 0 0 3px;
+  background: transparent;
+  transition: background 0.15s;
+}
+.resize-handle:hover { background: rgba(59, 130, 246, 0.35); }
 .guest-chip {
   display: flex;
   align-items: center;
@@ -75,4 +111,9 @@ function groupColor(guest: Guest) {
 }
 .guest-chip:hover { background: #f0f9ff; border-color: #93c5fd; }
 .guest-chip:active { cursor: grabbing; }
+.guest-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 </style>
