@@ -23,6 +23,11 @@ function updateDim(key: 'widthCm' | 'lengthCm', val: number | null) {
   seatingStore.updateTable(props.table.id, { [key]: val })
 }
 
+function toggleShape() {
+  const newShape = props.table.shape === 'round' ? 'rectangular' : 'round'
+  seatingStore.updateTable(props.table.id, { shape: newShape })
+}
+
 function updateCapacity() {
   const val = localCapacity.value
   if (val === null || val < 1 || isConfirming.value) return
@@ -102,7 +107,13 @@ const sortedSeats = computed(() =>
     </template>
     <template #header-extra>
       <div style="display: flex; align-items: center; gap: 4px;">
-        <span style="font-size: 16px;">{{ table.shape === 'round' ? '⭕' : '⬜' }}</span>
+        <span
+          style="font-size: 16px; cursor: pointer; user-select: none;"
+          title="Click to toggle shape"
+          @click="toggleShape"
+        >
+          {{ table.shape === 'round' ? '⚪' : '⬜' }}
+        </span>
         <n-input-number
           v-model:value="localCapacity"
           size="tiny"

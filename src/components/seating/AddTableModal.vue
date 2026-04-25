@@ -18,7 +18,7 @@ const form = ref({
 })
 
 const shapeOptions = [
-  { label: '⭕ Round', value: 'round' },
+  { label: '⚪ Round', value: 'round' },
   { label: '⬜ Rectangular', value: 'rectangular' },
 ]
 

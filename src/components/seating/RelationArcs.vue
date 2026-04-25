@@ -18,16 +18,19 @@ const tooltipY = ref(0)
 const tooltipContent = ref('')
 
 const guestPositions = ref<Map<string, { x: number; y: number; tableId: string | null; rotation: number }>>(new Map())
+const maskRects = ref<{ x: number; y: number; width: number; height: number }[]>([])
 
 function updatePositions() {
   const newPositions = new Map<string, { x: number; y: number; tableId: string | null; rotation: number }>()
-  const tokens = document.querySelectorAll('.seat-token[data-guest-id]')
+  const newMaskRects: { x: number; y: number; width: number; height: number }[] = []
   
   const canvas = document.querySelector('.seating-canvas')
   if (!canvas) return
   
   const canvasRect = canvas.getBoundingClientRect()
 
+  // 1. Guest tokens and positions
+  const tokens = document.querySelectorAll('.seat-token[data-guest-id]')
   tokens.forEach((token) => {
     const guestId = (token as HTMLElement).dataset.guestId
     if (guestId) {
@@ -42,6 +45,26 @@ function updatePositions() {
         rotation: table?.rotation ?? 0
       })
     }
+  })
+
+  // 2. Text elements for masking
+  const textSelectors = ['.initials', '.tname']
+  textSelectors.forEach(selector => {
+    const elements = document.querySelectorAll(selector)
+    elements.forEach(el => {
+      const rect = el.getBoundingClientRect()
+      // Only include if it has dimensions (some might be hidden)
+      if (rect.width > 0 && rect.height > 0) {
+        // Add a small padding to the mask for better legibility
+        const padding = 2
+        newMaskRects.push({
+          x: rect.left - canvasRect.left - padding,
+          y: rect.top - canvasRect.top - padding,
+          width: rect.width + padding * 2,
+          height: rect.height + padding * 2
+        })
+      }
+    })
   })
 
   // Also include unassigned guests if they are being dragged
@@ -59,6 +82,7 @@ function updatePositions() {
     }
   })
   guestPositions.value = newPositions
+  maskRects.value = newMaskRects
 }
 
 let animationFrame: number
@@ -233,13 +257,46 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
   const endX = end.x
   const endY = end.y
 
+  let d: string
+  if (hasTable && pos1.tableId === pos2.tableId) {
+    const table = seatingStore.getById(pos1.tableId!)
+    if (table && table.shape === 'rectangular' && !table.oneSided) {
+      const half = Math.ceil(table.seats.length / 2)
+      
+      const seat1 = table.seats.find(s => s.guestId === id1)
+      const seat2 = table.seats.find(s => s.guestId === id2)
+      
+      if (seat1 && seat2) {
+        const side1 = seat1.index < half ? 'top' : 'bottom'
+        const side2 = seat2.index < half ? 'top' : 'bottom'
+        
+        if (side1 !== side2) {
+          // Different sides of same rectangular table -> Straight line connecting centers
+          d = `M ${pos1.x} ${pos1.y} L ${pos2.x} ${pos2.y}`
+          let color = '#94a3b8'
+          const g1 = guestStore.getById(id1)
+          if (g1?.groupId) {
+            color = groupStore.getById(g1.groupId)?.color ?? color
+          }
+          return { id: `${id1}-${id2}`, d, color }
+        }
+      }
+    } else if (table && table.shape === 'round') {
+      // For round tables, if they are more than 1/4 of the circle apart, 
+      // it might look better to have a straight line or a shallower arc.
+      // But the prompt specifically said "on different sides", which is rectangular.
+      // Let's stick to rectangular for now as it's the most common "different sides" case.
+    }
+  }
+
   let sweepFlag = 1
   if (hasTable) {
     const table = seatingStore.getById(pos1.tableId!)
     if (table) {
-      const rectBodyWidth = Math.ceil(table.capacity / 2) * 44 + 16
+      const half = Math.ceil(table.capacity / 2)
+      const rectBodyWidth = half * 40 + (half - 1) * 8 + 24
       const tCX = table.aerialPosX + rectBodyWidth / 2
-      const tCY = table.aerialPosY + 26
+      const tCY = table.aerialPosY + 32
       const midX = (start.x + end.x) / 2
       const midY = (start.y + end.y) / 2
       const toMidX = midX - tCX
@@ -251,7 +308,7 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
     }
   }
   
-  const d = `M ${startX} ${startY} A ${rx} ${ry} 0 0 ${sweepFlag} ${endX} ${endY}`
+  d = `M ${startX} ${startY} A ${rx} ${ry} 0 0 ${sweepFlag} ${endX} ${endY}`
   
   let color = '#94a3b8'
   const guest1 = guestStore.getById(id1)
@@ -266,6 +323,23 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
 <template>
   <div class="relation-arcs-container">
     <svg class="relation-arcs-svg">
+      <defs>
+        <mask id="relation-mask">
+          <!-- White background allows everything to be visible -->
+          <rect x="0" y="0" width="100%" height="100%" fill="white" />
+          <!-- Black rectangles cut holes in the mask -->
+          <rect
+            v-for="(r, idx) in maskRects"
+            :key="idx"
+            :x="r.x"
+            :y="r.y"
+            :width="r.width"
+            :height="r.height"
+            fill="black"
+          />
+        </mask>
+      </defs>
+
       <g
         v-for="arc in relationArcs"
         :key="arc.id"
@@ -292,6 +366,7 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
           stroke-dasharray="6 3"
           class="arc-path"
           :class="{ 'is-hovered': hoveredArcId === arc.id, 'has-hover': hoveredArcId !== null && hoveredArcId !== arc.id }"
+          mask="url(#relation-mask)"
         />
       </g>
 
@@ -304,6 +379,7 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
         stroke-width="3"
         stroke-dasharray="5 5"
         style="opacity: 0.6; pointer-events: none;"
+        mask="url(#relation-mask)"
       />
     </svg>
 
@@ -327,7 +403,7 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 1;
+  z-index: 10;
 }
 .relation-arcs-svg {
   width: 100%;

@@ -57,27 +57,39 @@ watch(() => configStore.isLinkingMode, (val) => {
   <div @mousemove="onMouseMove" @dragover="onMouseMove">
     <n-tabs v-model:value="configStore.seatingActiveTab" type="line">
       <template #suffix>
-        <n-button v-if="configStore.seatingActiveTab === 'tables'" type="primary" size="small" @click="showAddModal = true">
-          + Add Table
-        </n-button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <n-button 
+            v-if="configStore.seatingActiveTab === 'tables'"
+            size="small" 
+            :type="configStore.isGuestSidebarOpen ? 'primary' : 'default'"
+            @click="configStore.isGuestSidebarOpen = !configStore.isGuestSidebarOpen"
+          >
+            {{ configStore.isGuestSidebarOpen ? 'Hide' : 'Show' }} Unassigned
+          </n-button>
+          <n-button v-if="configStore.seatingActiveTab === 'tables' || configStore.seatingActiveTab === 'floorplan'" type="primary" size="small" @click="showAddModal = true">
+            + Add Table
+          </n-button>
+        </div>
       </template>
 
       <!-- ── Tables tab ─────────────────────────────────────────────────────── -->
       <n-tab-pane name="tables" tab="Tables">
-        <div style="display: flex; gap: 16px; align-items: flex-start;">
-          <div style="flex: 1;">
-            <EmptyState
-              v-if="seatingStore.tables.length === 0"
-              icon="🪑" title="No tables yet"
-              description="Click '+ Add Table' to start laying out your seating."
-            />
-            <div v-else class="tables-grid">
-              <TableCard
-                v-for="table in sortedTables" :key="table.id"
-                :table="table"
-                @delete="seatingStore.deleteTable($event)"
-                @edit-guest="handleEditGuest"
+        <div style="position: relative; overflow: hidden; border-radius: 8px;">
+          <div style="display: flex; gap: 16px; align-items: flex-start; padding-right: 0;">
+            <div style="flex: 1;">
+              <EmptyState
+                v-if="seatingStore.tables.length === 0"
+                icon="🪑" title="No tables yet"
+                description="Click '+ Add Table' to start laying out your seating."
               />
+              <div v-else class="tables-grid">
+                <TableCard
+                  v-for="table in sortedTables" :key="table.id"
+                  :table="table"
+                  @delete="seatingStore.deleteTable($event)"
+                  @edit-guest="handleEditGuest"
+                />
+              </div>
             </div>
           </div>
           <UnassignedGuestList :guests="unassigned" @edit-guest="handleEditGuest" />
@@ -124,8 +136,18 @@ watch(() => configStore.isLinkingMode, (val) => {
                 Enable linking mode to set relations by dragging.
               </template>
             </div>
+
+          <div style="border-left: 1px solid #e2e8f0; padding-left: 16px; display: flex; gap: 8px;">
+            <n-button 
+              size="small" 
+              :type="configStore.isGuestSidebarOpen ? 'primary' : 'default'"
+              @click="configStore.isGuestSidebarOpen = !configStore.isGuestSidebarOpen"
+            >
+              {{ configStore.isGuestSidebarOpen ? 'Hide' : 'Show' }} Unassigned
+            </n-button>
           </div>
-          <div style="display: flex; gap: 16px; align-items: flex-start;">
+          </div>
+          <div style="position: relative; overflow: hidden; border-radius: 8px;">
             <div class="seating-canvas" :style="{ minHeight: seatingStore.tables.length ? '1000px' : '200px' }">
               <EmptyState
                 v-if="seatingStore.tables.length === 0"

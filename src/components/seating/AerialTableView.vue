@@ -42,12 +42,71 @@ const bottomSeats = computed(() => {
 
 const rectBodyWidth = computed(() => {
   const count = Math.max(topSeats.value.length, 1)
-  return count * 40 + (count - 1) * 4 + 20
+  return count * 40 + (count - 1) * 8 + 24
+})
+
+const rectBodyHeight = 64 // Matching CSS min-height
+
+const textRotation = computed(() => {
+  const name = props.table.name
+  // Rough estimate of text width: 7px per character for 11px font-size
+  const estimatedTextWidth = name.length * 7
+
+  const rad = (props.table.rotation * Math.PI) / 180
+  const absCos = Math.abs(Math.cos(rad))
+  const absSin = Math.abs(Math.sin(rad))
+
+  if (props.table.shape === 'rectangular') {
+    const w = rectBodyWidth.value
+    const h = rectBodyHeight
+    
+    // The maximum horizontal width available inside a rotated rectangle of width w and height h
+    // at its center is min(w / absCos, h / absSin).
+    let availableHorizontalWidth = w
+    if (absCos > 0.01 && absSin > 0.01) {
+      availableHorizontalWidth = Math.min(w / absCos, h / absSin)
+    } else if (absCos <= 0.01) {
+      // Near 90 or 270 degrees
+      availableHorizontalWidth = h
+    } else {
+      // Near 0 or 180 degrees
+      availableHorizontalWidth = w
+    }
+    
+    // If it fits screen-horizontally within the table's internal horizontal space with some padding
+    if (estimatedTextWidth < availableHorizontalWidth - 10) {
+      return -props.table.rotation
+    }
+
+    // Otherwise, orient with the table (along the long axis W)
+    // To be upright on screen, if the table is rotated such that its W axis 
+    // points downwards, we flip it 180.
+    const normRot = ((props.table.rotation % 360) + 360) % 360
+    if (normRot > 90 && normRot <= 270) {
+      return 180
+    }
+    return 0
+  } else if (props.table.shape === 'round') {
+    const d = innerCirclePx.value.d
+    // For a circle, available horizontal width is always d.
+    if (estimatedTextWidth < d - 10) {
+      return -props.table.rotation
+    }
+    
+    // Otherwise orient with the table's local rotation
+    const normRot = ((props.table.rotation % 360) + 360) % 360
+    if (normRot > 90 && normRot <= 270) {
+      return 180
+    }
+    return 0
+  }
+
+  return -props.table.rotation
 })
 
 // ── Round seat positioning ───────────────────────────────────────────────────
 
-const roundRadius = computed(() => Math.max(50, props.table.seats.length * 8))
+const roundRadius = computed(() => Math.max(60, props.table.seats.length * 10))
 const roundContainerSize = computed(() => 2 * (roundRadius.value + 30))
 
 function seatCircleStyle(index: number) {
@@ -256,7 +315,7 @@ function setOrigin(corner: SeatOriginCorner) {
               @mousedown.stop="setOrigin(c)"
             />
           </template>
-          <div :style="{ transform: `rotate(${-table.rotation}deg)` }" class="text-container">
+          <div :style="{ transform: `rotate(${textRotation}deg)` }" class="text-container">
             <span class="tname">{{ table.name }}</span>
           </div>
           <!-- Seat numbers for bottom row -->
@@ -307,7 +366,7 @@ function setOrigin(corner: SeatOriginCorner) {
               @mousedown.stop="setOrigin(c)"
             />
           </template>
-          <div :style="{ transform: `rotate(${-table.rotation}deg)` }" class="text-container">
+          <div :style="{ transform: `rotate(${textRotation}deg)` }" class="text-container">
             <span class="tname">{{ table.name }}</span>
           </div>
           <span
@@ -397,9 +456,9 @@ function setOrigin(corner: SeatOriginCorner) {
 }
 .seats-row {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   justify-content: center;
-  padding: 4px 0;
+  padding: 6px 0;
   box-sizing: border-box;
 }
 .rect-body {

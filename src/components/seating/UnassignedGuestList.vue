@@ -20,6 +20,7 @@ function onResizeStart(event: MouseEvent) {
   const startWidth = configStore.guestSidebarWidth
 
   function onMove(e: MouseEvent) {
+    // Reverse the calculation because the handle is on the LEFT side of the drawer
     configStore.guestSidebarWidth = Math.max(160, Math.min(500, startWidth + (startX - e.clientX)))
   }
   function onUp() {
@@ -80,58 +81,76 @@ function onDoubleClick(guestId: string) {
 </script>
 
 <template>
-  <div class="unassigned-list" :style="{ width: configStore.guestSidebarWidth + 'px' }">
-    <div class="resize-handle" @mousedown="onResizeStart" />
-    <div class="list-content">
-      <n-text depth="2" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 8px;">
-        Unassigned ({{ guests.length }})
-      </n-text>
-      <div
-        v-for="guest in guests"
-        :key="guest.id"
-        class="guest-chip"
-        :data-guest-id="guest.id"
-        :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px' } : {}"
-        draggable="true"
-        @dragstart="onDragStart($event, guest)"
-        @dragend="onDragEnd"
-        @dragover="onDragOver"
-        @drop="onDrop($event, guest)"
-        @dblclick="onDoubleClick(guest.id)"
-      >
-        <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0">
-          <span
-            v-if="groupColor(guest)"
-            :style="`width:8px; height:8px; border-radius:50%; background:${groupColor(guest)}; flex-shrink:0`"
-          />
-          <span class="guest-name">{{ guest.firstName }} {{ guest.lastName }}</span>
-          <template v-if="guest.customEmoji">
-            <span :title="guest.customEmoji">{{ guest.customEmoji }}</span>
-          </template>
-          <template v-else>
-            <span v-if="guest.isGroom" title="Groom">🤵</span>
-            <span v-if="guest.isBride" title="Bride">👰</span>
-            <span v-if="guest.isChild" title="Child">👶</span>
-          </template>
+  <Transition name="slide">
+    <div 
+      v-if="configStore.isGuestSidebarOpen"
+      class="unassigned-list" 
+      :style="{ width: configStore.guestSidebarWidth + 'px' }"
+    >
+      <div class="resize-handle" @mousedown="onResizeStart" />
+      <div class="list-content">
+        <n-text depth="2" style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 8px;">
+          Unassigned ({{ guests.length }})
+        </n-text>
+        <div
+          v-for="guest in guests"
+          :key="guest.id"
+          class="guest-chip"
+          :data-guest-id="guest.id"
+          :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px' } : {}"
+          draggable="true"
+          @dragstart="onDragStart($event, guest)"
+          @dragend="onDragEnd"
+          @dragover="onDragOver"
+          @drop="onDrop($event, guest)"
+          @dblclick="onDoubleClick(guest.id)"
+        >
+          <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0">
+            <span
+              v-if="groupColor(guest)"
+              :style="`width:8px; height:8px; border-radius:50%; background:${groupColor(guest)}; flex-shrink:0`"
+            />
+            <span class="guest-name">{{ guest.firstName }} {{ guest.lastName }}</span>
+            <template v-if="guest.customEmoji">
+              <span :title="guest.customEmoji">{{ guest.customEmoji }}</span>
+            </template>
+            <template v-else>
+              <span v-if="guest.isGroom" title="Groom">🤵</span>
+              <span v-if="guest.isBride" title="Bride">👰</span>
+              <span v-if="guest.isChild" title="Child">👶</span>
+            </template>
+          </div>
+          <RSVPBadge :status="guest.rsvpStatus" />
         </div>
-        <RSVPBadge :status="guest.rsvpStatus" />
+        <n-text v-if="guests.length === 0" depth="3" style="font-size: 12px;">All guests assigned 🎉</n-text>
       </div>
-      <n-text v-if="guests.length === 0" depth="3" style="font-size: 12px;">All guests assigned 🎉</n-text>
     </div>
-  </div>
+  </Transition>
 </template>
 
 <style scoped>
 .unassigned-list {
-  flex-shrink: 0;
-  background: #fafafa;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  max-height: calc(100vh - 120px);
-  position: relative;
-  box-sizing: border-box;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  background: white;
+  border-left: 1px solid #e2e8f0;
+  box-shadow: -4px 0 15px -3px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
 }
 .list-content {
   flex: 1;
