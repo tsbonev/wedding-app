@@ -22,9 +22,11 @@ const stats = computed(() => {
   const assignedSeats = seating.tables.reduce((s, t) => s + t.seats.filter((seat) => seat.guestId).length, 0)
 
   const totalRoomCapacity = rooms.rooms.reduce((s, r) => s + r.capacity, 0)
-  const occupiedRooms = rooms.rooms.reduce((s, r) => s + r.guestIds.length, 0)
+  const occupiedRoomSpots = rooms.rooms.reduce((s, r) => s + r.guestIds.length, 0)
+  const totalRooms = rooms.rooms.length
+  const emptyRooms = rooms.rooms.filter(r => r.guestIds.length === 0).length
 
-  return { total, confirmed, declined, pending, needsSeat, totalSeats, assignedSeats, totalRoomCapacity, occupiedRooms }
+  return { total, confirmed, declined, pending, needsSeat, totalSeats, assignedSeats, totalRoomCapacity, occupiedRoomSpots, totalRooms, emptyRooms }
 })
 
 const daysUntil = computed(() => {
@@ -71,11 +73,19 @@ const daysUntil = computed(() => {
         </n-gi>
         <n-gi span="2 m:1">
           <n-card title="Hotel Rooms">
-            <n-statistic label="Guests Accommodated" :value="`${stats.occupiedRooms} / ${stats.totalRoomCapacity}`" />
+            <n-grid :cols="2" :x-gap="16">
+              <n-gi>
+                <n-statistic label="Total Rooms" :value="stats.totalRooms" />
+              </n-gi>
+              <n-gi>
+                <n-statistic label="Empty Rooms" :value="stats.emptyRooms" />
+              </n-gi>
+            </n-grid>
+            <n-statistic label="Guests Accommodated" :value="`${stats.occupiedRoomSpots} / ${stats.totalRoomCapacity}`" style="margin-top: 12px" />
             <n-progress
               v-if="stats.totalRoomCapacity > 0"
               type="line"
-              :percentage="Math.round((stats.occupiedRooms / stats.totalRoomCapacity) * 100)"
+              :percentage="Math.round((stats.occupiedRoomSpots / stats.totalRoomCapacity) * 100)"
               style="margin-top: 12px"
             />
           </n-card>

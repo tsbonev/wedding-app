@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { NModal, NCard, NSpace, NButton, NText } from 'naive-ui'
 
-defineProps<{ show: boolean; message?: string }>()
+defineProps<{ 
+  show: boolean; 
+  message?: string;
+  confirmText?: string;
+  confirmType?: 'default' | 'primary' | 'info' | 'success' | 'warning' | 'error';
+}>()
 const emit = defineEmits<{ (e: 'confirm'): void; (e: 'cancel'): void }>()
 </script>
 
@@ -12,7 +17,9 @@ const emit = defineEmits<{ (e: 'confirm'): void; (e: 'cancel'): void }>()
       <template #footer>
         <n-space justify="end">
           <n-button @click="emit('cancel')">Cancel</n-button>
-          <n-button type="error" @click="emit('confirm')">Delete</n-button>
+          <n-button :type="confirmType ?? 'error'" @click="emit('confirm')">
+            {{ confirmText ?? 'Delete' }}
+          </n-button>
         </n-space>
       </template>
     </n-card>

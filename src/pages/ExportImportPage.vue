@@ -69,6 +69,8 @@ async function confirmImport() {
     <ConfirmModal
       :show="showConfirm"
       message="This will replace ALL current data with the contents of the imported file. This cannot be undone."
+      confirm-text="Replace"
+      confirm-type="warning"
       @confirm="confirmImport"
       @cancel="showConfirm = false; pendingFile = null"
     />

@@ -5,11 +5,18 @@ import { useGuestStore } from './useGuestStore'
 
 export const useRoomStore = defineStore('rooms', () => {
   const rooms = ref<Room[]>([])
+  const roomTypes = ref<string[]>(['suite', 'single', 'double'])
 
   const getById = (id: string) => rooms.value.find((r) => r.id === id)
 
   function addRoom(payload: Omit<Room, 'id' | 'guestIds'>) {
     rooms.value.push({ ...payload, id: crypto.randomUUID(), guestIds: [] })
+  }
+
+  function addRoomType(type: string) {
+    if (type && !roomTypes.value.includes(type)) {
+      roomTypes.value.push(type)
+    }
   }
 
   function updateRoom(id: string, patch: Partial<Room>) {
@@ -52,5 +59,5 @@ export const useRoomStore = defineStore('rooms', () => {
     rooms.value = list
   }
 
-  return { rooms, getById, addRoom, updateRoom, deleteRoom, assignGuests, unassignGuest, bulkReplace }
+  return { rooms, roomTypes, getById, addRoom, addRoomType, updateRoom, deleteRoom, assignGuests, unassignGuest, bulkReplace }
 }, { persist: true })

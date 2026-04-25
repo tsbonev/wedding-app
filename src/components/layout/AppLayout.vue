@@ -26,14 +26,14 @@ window.addEventListener('resize', () => { isMobile.value = window.innerWidth < 7
       @expand="collapsed = false"
       bordered
     >
-      <AppHeader v-if="!collapsed" />
+      <AppHeader :collapsed="collapsed" />
       <AppSidebar />
     </n-layout-sider>
 
     <!-- mobile drawer -->
     <n-drawer v-if="isMobile" v-model:show="drawerOpen" :width="220" placement="left">
       <n-drawer-content>
-        <AppHeader />
+        <AppHeader :collapsed="false" />
         <AppSidebar />
       </n-drawer-content>
     </n-drawer>

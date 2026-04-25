@@ -7,7 +7,7 @@ import EmojiPicker from 'vue3-emoji-picker'
 // @ts-ignore
 import 'vue3-emoji-picker/css'
 import type { SelectOption } from 'naive-ui'
-import type { Guest, RSVPStatus } from '@/types'
+import type { Guest, RSVPStatus, MenuItem } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useMenuStore } from '@/stores/useMenuStore'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -47,7 +47,7 @@ const rsvpOptions = [
 ]
 
 const mealOptions = computed(() =>
-  menuStore.menuOptions.map((o) => ({ label: `${o.emoji} ${o.label}`, value: o.id }))
+  menuStore.menuOptions.map((o: MenuItem) => ({ label: `${o.emoji} ${o.label}`, value: o.id }))
 )
 
 const groupOptions = computed<SelectOption[]>(() =>

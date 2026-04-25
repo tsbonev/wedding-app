@@ -2,7 +2,7 @@
 import { ref, computed, watch, nextTick, h } from 'vue'
 import { NTooltip, NSelect } from 'naive-ui'
 import type { SelectOption } from 'naive-ui'
-import type { SeatOriginCorner } from '@/types'
+import type { SeatOriginCorner, MenuItem } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useMenuStore } from '@/stores/useMenuStore'
@@ -46,7 +46,7 @@ const groupInfo = computed(() => guest.value?.groupId ? groupStore.getById(guest
 const groupColor = computed(() => groupInfo.value?.color ?? null)
 const mealOption = computed(() => {
   if (!guest.value?.mealChoiceId) return null
-  return menuStore.menuOptions.find(m => m.id === guest.value!.mealChoiceId) ?? null
+  return menuStore.menuOptions.find((m: MenuItem) => m.id === guest.value!.mealChoiceId) ?? null
 })
 
 const initials = computed(() => {

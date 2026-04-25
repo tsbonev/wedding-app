@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { NForm, NFormItem, NInput, NInputNumber, NSpace, NButton } from 'naive-ui'
+import { ref, computed } from 'vue'
+import { NForm, NFormItem, NInput, NInputNumber, NSpace, NButton, NSelect, NDivider } from 'naive-ui'
 import type { Room } from '@/types'
+import { useRoomStore } from '@/stores/useRoomStore'
 
 const props = defineProps<{ initial?: Partial<Room>; submitLabel?: string }>()
 const emit = defineEmits<{ (e: 'submit', data: Omit<Room, 'id' | 'guestIds'>): void; (e: 'cancel'): void }>()
+
+const roomStore = useRoomStore()
+const newType = ref('')
+
+const typeOptions = computed(() => {
+  return roomStore.roomTypes.map(t => ({ label: t.charAt(0).toUpperCase() + t.slice(1), value: t }))
+})
 
 const form = ref({
   number: props.initial?.number ?? '',
@@ -14,6 +22,15 @@ const form = ref({
   checkOut: props.initial?.checkOut ?? null,
   notes: props.initial?.notes ?? '',
 })
+
+function handleAddType() {
+  const type = newType.value.trim().toLowerCase()
+  if (type) {
+    roomStore.addRoomType(type)
+    form.value.type = type
+    newType.value = ''
+  }
+}
 
 function handleSubmit() {
   emit('submit', { ...form.value })
@@ -27,7 +44,17 @@ function handleSubmit() {
         <n-input v-model:value="form.number" placeholder="101 / Bridal Suite" />
       </n-form-item>
       <n-form-item label="Type" style="flex:1; min-width:110px">
-        <n-input v-model:value="form.type" placeholder="double, single, suite" />
+        <n-select v-model:value="form.type" :options="typeOptions" placeholder="Select type">
+          <template #action>
+            <n-space vertical size="small">
+              <n-divider style="margin: 0" />
+              <n-space inline>
+                <n-input v-model:value="newType" size="small" placeholder="Add custom type" @keyup.enter="handleAddType" />
+                <n-button size="small" type="primary" @click="handleAddType">Add</n-button>
+              </n-space>
+            </n-space>
+          </template>
+        </n-select>
       </n-form-item>
     </n-space>
     <n-form-item label="Capacity">

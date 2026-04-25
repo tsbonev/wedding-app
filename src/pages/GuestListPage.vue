@@ -7,7 +7,9 @@ import type { DataTableColumns, SelectOption } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useMenuStore } from '@/stores/useMenuStore'
 import { useGroupStore } from '@/stores/useGroupStore'
-import type { Guest, RSVPStatus } from '@/types'
+import { useSeatingStore } from '@/stores/useSeatingStore'
+import { useRoomStore } from '@/stores/useRoomStore'
+import type { Guest, RSVPStatus, MenuItem } from '@/types'
 import GuestFormModal from '@/components/guest/GuestFormModal.vue'
 import BulkAddModal from '@/components/guest/BulkAddModal.vue'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
@@ -16,6 +18,8 @@ import EmptyState from '@/components/shared/EmptyState.vue'
 const guestStore = useGuestStore()
 const menuStore = useMenuStore()
 const groupStore = useGroupStore()
+const seatingStore = useSeatingStore()
+const roomStore = useRoomStore()
 
 // ── Filters ───────────────────────────────────────────────────────────────────
 
@@ -107,7 +111,7 @@ const rsvpCellOptions = [
 
 const mealCellOptions = computed(() => [
   { label: '— None —', value: '' },
-  ...menuStore.menuOptions.map((o) => ({ label: `${o.emoji} ${o.label}`, value: o.id })),
+  ...menuStore.menuOptions.map((o: MenuItem) => ({ label: `${o.emoji} ${o.label}`, value: o.id })),
 ])
 
 const groupCellOptions = computed<(SelectOption & { color?: string })[]>(() => [
@@ -135,7 +139,7 @@ function renderSingleSelectLabel(option: SelectOption & { color?: string }) {
 
 function getMealLabel(id: string | null) {
   if (!id) return '—'
-  const opt = menuStore.menuOptions.find((o) => o.id === id)
+  const opt = menuStore.menuOptions.find((o: MenuItem) => o.id === id)
   return opt ? `${opt.emoji} ${opt.label}` : '—'
 }
 
@@ -143,6 +147,18 @@ function getPartnerLabel(id: string | null) {
   if (!id) return null
   const g = guestStore.getById(id)
   return g ? `Partner of ${g.firstName} ${g.lastName}` : null
+}
+
+function getTableName(id: string | null) {
+  if (!id) return '—'
+  const t = seatingStore.getById(id)
+  return t ? `🪑 ${t.name}` : '—'
+}
+
+function getRoomName(id: string | null) {
+  if (!id) return '—'
+  const r = roomStore.getById(id)
+  return r ? `🏨 Room ${r.number}` : '—'
 }
 
 function openAdd() {
@@ -311,14 +327,14 @@ const columns = computed<DataTableColumns<Guest>>(() => [
   {
     title: 'Table',
     key: 'tableId',
-    width: 90,
-    render: (row) => row.tableId ? h(NTag, { size: 'small' }, { default: () => '💺 Assigned' }) : '—',
+    width: 120,
+    render: (row) => row.tableId ? h(NTag, { size: 'small' }, { default: () => getTableName(row.tableId) }) : '—',
   },
   {
     title: 'Room',
     key: 'roomId',
-    width: 90,
-    render: (row) => row.roomId ? h(NTag, { size: 'small' }, { default: () => '🏨 Assigned' }) : '—',
+    width: 120,
+    render: (row) => row.roomId ? h(NTag, { size: 'small' }, { default: () => getRoomName(row.roomId) }) : '—',
   },
   {
     title: '',

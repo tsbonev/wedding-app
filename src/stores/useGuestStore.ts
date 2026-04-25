@@ -8,6 +8,7 @@ export const useGuestStore = defineStore('guests', () => {
   const getById = (id: string) => guests.value.find((g) => g.id === id)
   const confirmedGuests = computed(() => guests.value.filter((g) => g.rsvpStatus === 'confirmed'))
   const unassignedGuests = computed(() => guests.value.filter((g) => g.tableId === null && g.rsvpStatus !== 'declined'))
+  const unassignedRoomGuests = computed(() => guests.value.filter((g) => g.roomId === null && g.rsvpStatus !== 'declined'))
 
   function addGuest(payload: Omit<Guest, 'id' | 'createdAt'>) {
     guests.value.push({ ...payload, id: crypto.randomUUID(), createdAt: new Date().toISOString() })
@@ -61,5 +62,5 @@ export const useGuestStore = defineStore('guests', () => {
     guests.value = list
   }
 
-  return { guests, getById, confirmedGuests, unassignedGuests, addGuest, updateGuest, deleteGuest, bulkReplace }
+  return { guests, getById, confirmedGuests, unassignedGuests, unassignedRoomGuests, addGuest, updateGuest, deleteGuest, bulkReplace }
 }, { persist: true })

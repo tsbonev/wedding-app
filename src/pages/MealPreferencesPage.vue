@@ -1,15 +1,44 @@
 <script setup lang="ts">
-import { computed, h } from 'vue'
-import { NSpace, NCard, NProgress, NText, NDataTable, NSelect } from 'naive-ui'
+import { computed, h, ref } from 'vue'
+import {
+  NSpace, NCard, NProgress, NText, NDataTable, NSelect,
+  NTag, NPopover, NInput, NButton, NDivider
+} from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useMenuStore } from '@/stores/useMenuStore'
-import type { Guest } from '@/types'
+import type { Guest, MenuItem } from '@/types'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
 import EmptyState from '@/components/shared/EmptyState.vue'
 
 const guestStore = useGuestStore()
 const menuStore = useMenuStore()
+
+// Meal management
+const newOptionLabel = ref('')
+const newOptionEmoji = ref('🍽️')
+
+function addOption() {
+  if (!newOptionLabel.value.trim()) return
+  menuStore.addOption(newOptionLabel.value.trim(), newOptionEmoji.value)
+  newOptionLabel.value = ''
+  newOptionEmoji.value = '🍽️'
+}
+
+const editingMealId = ref<string | null>(null)
+const editingMealLabel = ref('')
+
+function startEditMeal(opt: MenuItem) {
+  editingMealId.value = opt.id
+  editingMealLabel.value = opt.label
+}
+
+function saveEditMeal(id: string) {
+  if (editingMealLabel.value.trim()) {
+    menuStore.updateOption(id, { label: editingMealLabel.value.trim() })
+  }
+  editingMealId.value = null
+}
 
 const confirmedGuests = computed(() => guestStore.guests.filter((g) => g.rsvpStatus === 'confirmed'))
 
@@ -31,7 +60,7 @@ const columns: DataTableColumns<Guest> = [
     title: 'Meal',
     key: 'meal',
     render: (r) => {
-      const opts = menuStore.menuOptions.map((o) => ({ label: `${o.emoji} ${o.label}`, value: o.id }))
+      const opts = menuStore.menuOptions.map((o: MenuItem) => ({ label: `${o.emoji} ${o.label}`, value: o.id }))
       return h(NSelect, {
         value: r.mealChoiceId,
         options: opts,
@@ -42,7 +71,16 @@ const columns: DataTableColumns<Guest> = [
       })
     },
   },
-  { title: 'Dietary Notes', key: 'dietaryNotes', render: (r) => r.dietaryNotes || '—' },
+  {
+    title: 'Dietary Notes',
+    key: 'dietaryNotes',
+    render: (r) => h(NInput, {
+      value: r.dietaryNotes,
+      placeholder: 'Notes',
+      size: 'small',
+      'onUpdate:value': (val: string) => guestStore.updateGuest(r.id, { dietaryNotes: val }),
+    }),
+  },
 ]
 </script>
 
@@ -58,6 +96,47 @@ const columns: DataTableColumns<Guest> = [
     />
 
     <n-space v-else vertical :size="24">
+      <n-card title="Meal Options">
+        <n-space wrap style="margin-bottom: 12px;">
+          <div v-for="opt in menuStore.menuOptions" :key="opt.id" class="meal-tag-wrapper">
+            <n-popover trigger="click" placement="bottom" :show="editingMealId === opt.id" @clickoutside="editingMealId = null">
+              <template #trigger>
+                <n-tag
+                  closable
+                  @close="menuStore.removeOption(opt.id)"
+                  @click="startEditMeal(opt)"
+                  style="cursor: pointer"
+                >
+                  {{ opt.emoji }} {{ opt.label }}
+                </n-tag>
+              </template>
+              <div style="display: flex; gap: 8px;">
+                <n-input
+                  v-model:value="editingMealLabel"
+                  size="small"
+                  @keyup.enter="saveEditMeal(opt.id)"
+                  placeholder="Rename meal"
+                />
+                <n-button size="small" type="primary" @click="saveEditMeal(opt.id)">Save</n-button>
+              </div>
+            </n-popover>
+          </div>
+          <n-text v-if="menuStore.menuOptions.length === 0" depth="3">No meal options yet.</n-text>
+        </n-space>
+        <n-divider />
+        <n-space align="end">
+          <div class="n-form-item-wrapper" style="width: 80px; margin: 0">
+            <span class="field-label">Emoji</span>
+            <n-input v-model:value="newOptionEmoji" maxlength="2" />
+          </div>
+          <div class="n-form-item-wrapper" style="width: 160px; margin: 0">
+            <span class="field-label">Label</span>
+            <n-input v-model:value="newOptionLabel" placeholder="Chicken" @keyup.enter="addOption" />
+          </div>
+          <n-button type="primary" :disabled="!newOptionLabel.trim()" @click="addOption">Add</n-button>
+        </n-space>
+      </n-card>
+
       <n-card title="Summary">
         <n-space vertical>
           <div v-for="opt in menuStore.menuOptions" :key="opt.id">
@@ -83,3 +162,19 @@ const columns: DataTableColumns<Guest> = [
     </n-space>
   </div>
 </template>
+
+<style scoped>
+.meal-tag-wrapper {
+  display: inline-block;
+}
+/* Helper component for consistent label styling without full NForm */
+:deep(.n-form-item-wrapper) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+:deep(.n-form-item-wrapper .field-label) {
+  font-size: 13px;
+  color: #666;
+}
+</style>

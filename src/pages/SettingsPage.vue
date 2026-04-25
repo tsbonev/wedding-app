@@ -1,27 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import {
-  NCard, NForm, NFormItem, NInput, NButton, NSpace, NTag, NDivider, NText, NPopconfirm
+  NCard, NForm, NFormItem, NInput, NButton, NDivider, NText, NPopconfirm
 } from 'naive-ui'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
-import { useMenuStore } from '@/stores/useMenuStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import type { GuestGroup } from '@/types'
 
 const config = useAppConfigStore()
-const menuStore = useMenuStore()
 const groupStore = useGroupStore()
-
-// Meal options
-const newOptionLabel = ref('')
-const newOptionEmoji = ref('🍽️')
-
-function addOption() {
-  if (!newOptionLabel.value.trim()) return
-  menuStore.addOption(newOptionLabel.value.trim(), newOptionEmoji.value)
-  newOptionLabel.value = ''
-  newOptionEmoji.value = '🍽️'
-}
 
 // Group add
 const newGroupName = ref('')
@@ -146,31 +133,6 @@ function cancelEdit() {
           Add Group
         </n-button>
       </div>
-    </n-card>
-
-    <!-- Meal Options -->
-    <n-card title="Meal Options">
-      <n-space wrap style="margin-bottom: 12px;">
-        <n-tag
-          v-for="opt in menuStore.menuOptions"
-          :key="opt.id"
-          closable
-          @close="menuStore.removeOption(opt.id)"
-        >
-          {{ opt.emoji }} {{ opt.label }}
-        </n-tag>
-        <n-text v-if="menuStore.menuOptions.length === 0" depth="3">No meal options yet.</n-text>
-      </n-space>
-      <n-divider />
-      <n-space align="end">
-        <n-form-item label="Emoji" style="width: 80px; margin: 0">
-          <n-input v-model:value="newOptionEmoji" maxlength="2" />
-        </n-form-item>
-        <n-form-item label="Label" style="width: 160px; margin: 0">
-          <n-input v-model:value="newOptionLabel" placeholder="Chicken" @keyup.enter="addOption" />
-        </n-form-item>
-        <n-button type="primary" :disabled="!newOptionLabel.trim()" @click="addOption">Add</n-button>
-      </n-space>
     </n-card>
   </div>
 </template>

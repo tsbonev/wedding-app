@@ -253,7 +253,7 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
               >
                 <EmptyState
                   v-if="seatingStore.tables.length === 0"
-                  icon="💺" title="No tables yet"
+                  icon="🪑" title="No tables yet"
                   description="Switch to the Tables tab to add tables."
                 />
                 <RelationArcs />

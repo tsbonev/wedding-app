@@ -368,7 +368,7 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
           stroke-dasharray="6 3"
           class="arc-path"
           :class="{ 'is-hovered': hoveredArcId === arc.id, 'has-hover': hoveredArcId !== null && hoveredArcId !== arc.id }"
-          :mask="hoveredArcId === arc.id ? null : 'url(#relation-mask)'"
+          :mask="hoveredArcId === arc.id ? undefined : 'url(#relation-mask)'"
         />
       </g>
 

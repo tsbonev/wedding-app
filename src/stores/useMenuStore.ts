@@ -17,9 +17,17 @@ export const useMenuStore = defineStore('menu', () => {
     menuOptions.value = menuOptions.value.filter((o) => o.id !== id)
   }
 
-  function bulkReplace(options: MenuItem[]) {
-    menuOptions.value = options
+  function updateOption(id: string, updates: Partial<MenuItem>) {
+    const opt = menuOptions.value.find(o => o.id === id)
+    if (opt) {
+      if (updates.label !== undefined) opt.label = updates.label
+      if (updates.emoji !== undefined) opt.emoji = updates.emoji
+    }
   }
 
-  return { menuOptions, addOption, removeOption, bulkReplace }
+  function bulkReplace(newOptions: MenuItem[]) {
+    menuOptions.value = newOptions
+  }
+
+  return { menuOptions, addOption, removeOption, updateOption, bulkReplace }
 }, { persist: true })
