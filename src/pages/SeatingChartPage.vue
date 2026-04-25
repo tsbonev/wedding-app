@@ -56,20 +56,34 @@ const sortedTables = computed(() =>
 
       <!-- ── Floor Plan tab ─────────────────────────────────────────────────── -->
       <n-tab-pane name="floorplan" tab="Floor Plan">
-        <div style="display: flex; gap: 16px; align-items: flex-start;">
-          <div class="seating-canvas" :style="{ minHeight: seatingStore.tables.length ? '1000px' : '200px' }">
-            <EmptyState
-              v-if="seatingStore.tables.length === 0"
-              icon="💺" title="No tables yet"
-              description="Switch to the Tables tab to add tables."
-            />
-            <AerialTableView
-              v-for="table in seatingStore.tables" :key="table.id"
-              :table="table"
-            />
-            <PlusOneArcs v-if="configStore.showPlusOneLines ?? true" />
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; gap: 8px; align-items: center; background: white; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <n-button
+              :type="configStore.isLinkingMode ? 'primary' : 'default'"
+              size="small"
+              @click="configStore.isLinkingMode = !configStore.isLinkingMode"
+            >
+              {{ configStore.isLinkingMode ? 'Disable' : 'Enable' }} Linking Mode
+            </n-button>
+            <span style="font-size: 13px; color: #64748b;">
+              {{ configStore.isLinkingMode ? 'Drag a guest onto another to set them as a plus-one. (Moving disabled)' : 'Enable linking mode to set plus-ones by dragging guest badges.' }}
+            </span>
           </div>
-          <UnassignedGuestList :guests="unassigned" />
+          <div style="display: flex; gap: 16px; align-items: flex-start;">
+            <div class="seating-canvas" :style="{ minHeight: seatingStore.tables.length ? '1000px' : '200px' }">
+              <EmptyState
+                v-if="seatingStore.tables.length === 0"
+                icon="💺" title="No tables yet"
+                description="Switch to the Tables tab to add tables."
+              />
+              <AerialTableView
+                v-for="table in seatingStore.tables" :key="table.id"
+                :table="table"
+              />
+              <PlusOneArcs v-if="configStore.showPlusOneLines ?? true" />
+            </div>
+            <UnassignedGuestList :guests="unassigned" />
+          </div>
         </div>
       </n-tab-pane>
     </n-tabs>

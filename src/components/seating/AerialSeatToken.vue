@@ -7,6 +7,7 @@ import { useGuestStore } from '@/stores/useGuestStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useMenuStore } from '@/stores/useMenuStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
+import { useAppConfigStore } from '@/stores/useAppConfigStore'
 
 const props = defineProps<{
   tableId: string
@@ -19,6 +20,7 @@ const guestStore = useGuestStore()
 const groupStore = useGroupStore()
 const menuStore = useMenuStore()
 const seatingStore = useSeatingStore()
+const configStore = useAppConfigStore()
 
 const showDropdown = ref(false)
 const selectRef = ref<InstanceType<typeof NSelect> | null>(null)
@@ -104,6 +106,7 @@ function renderSelectLabel(option: SelectOption & { color?: string | null }) {
 }
 
 function openDropdown() {
+  if (configStore.isLinkingMode) return
   if (selectOptions.value.length === 0) return
   showDropdown.value = true
 }
@@ -146,6 +149,15 @@ function onDrop(event: DragEvent) {
   isDragOver.value = false
   const guestId = event.dataTransfer!.getData('guestId')
   if (!guestId) return
+
+  if (configStore.isLinkingMode) {
+    // Linking Mode: source is plus-one, target (props.guestId) is origin
+    if (props.guestId && props.guestId !== guestId) {
+      guestStore.updateGuest(guestId, { plusOneOf: props.guestId })
+    }
+    return
+  }
+
   const sourceTableId = event.dataTransfer!.getData('sourceTableId')
   const sourceSeatIndexStr = event.dataTransfer!.getData('sourceSeatIndex')
   if (sourceTableId && sourceSeatIndexStr !== '') {
@@ -174,6 +186,7 @@ function unassign() {
           :data-guest-id="guestId"
           :style="guest && groupColor ? { background: groupColor } : {}"
           :draggable="!!guest"
+          :title="configStore.isLinkingMode && guest ? 'Drag onto someone to make them their plus-one' : ''"
           @click="openDropdown"
           @dragstart="onDragStart"
           @dragover="onDragOver"

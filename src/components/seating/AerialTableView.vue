@@ -2,10 +2,12 @@
 import { ref, computed } from 'vue'
 import type { Table, SeatOriginCorner, Seat } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
+import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import AerialSeatToken from './AerialSeatToken.vue'
 
 const props = defineProps<{ table: Table }>()
 const seatingStore = useSeatingStore()
+const configStore = useAppConfigStore()
 const isSelected = ref(false)
 const el = ref<HTMLElement | null>(null)
 
@@ -118,6 +120,7 @@ function seatIndStyle(index: number) {
 let startX = 0; let startY = 0; let origX = 0; let origY = 0
 
 function onMouseDown(event: MouseEvent) {
+  if (configStore.isLinkingMode) return
   if ((event.target as HTMLElement).closest('.seat-token, button, .n-button, .corner-handle, .origin-dot')) return
 
   if (!isSelected.value) {
@@ -158,6 +161,7 @@ function onMouseDown(event: MouseEvent) {
 // ── Corner drag-to-rotate (snaps to 45° on release) ─────────────────────────
 
 function onCornerMouseDown(event: MouseEvent) {
+  if (configStore.isLinkingMode) return
   event.stopPropagation()
   event.preventDefault()
 

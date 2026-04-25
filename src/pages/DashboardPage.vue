@@ -16,6 +16,7 @@ const stats = computed(() => {
   const confirmed = guests.guests.filter((g) => g.rsvpStatus === 'confirmed').length
   const declined = guests.guests.filter((g) => g.rsvpStatus === 'declined').length
   const pending = total - confirmed - declined
+  const needsSeat = confirmed + pending
 
   const totalSeats = seating.tables.reduce((s, t) => s + t.capacity, 0)
   const assignedSeats = seating.tables.reduce((s, t) => s + t.seats.filter((seat) => seat.guestId).length, 0)
@@ -23,7 +24,7 @@ const stats = computed(() => {
   const totalRoomCapacity = rooms.rooms.reduce((s, r) => s + r.capacity, 0)
   const occupiedRooms = rooms.rooms.reduce((s, r) => s + r.guestIds.length, 0)
 
-  return { total, confirmed, declined, pending, totalSeats, assignedSeats, totalRoomCapacity, occupiedRooms }
+  return { total, confirmed, declined, pending, needsSeat, totalSeats, assignedSeats, totalRoomCapacity, occupiedRooms }
 })
 
 const daysUntil = computed(() => {
@@ -56,11 +57,14 @@ const daysUntil = computed(() => {
         </n-gi>
         <n-gi span="2 m:1">
           <n-card title="Seating">
-            <n-statistic label="Assigned" :value="`${stats.assignedSeats} / ${stats.totalSeats}`" />
+            <n-space justify="space-between" align="center">
+              <n-statistic label="Assigned" :value="`${stats.assignedSeats} / ${stats.needsSeat}`" />
+              <n-statistic label="Total Seats" :value="stats.totalSeats" />
+            </n-space>
             <n-progress
-              v-if="stats.totalSeats > 0"
+              v-if="stats.needsSeat > 0"
               type="line"
-              :percentage="Math.round((stats.assignedSeats / stats.totalSeats) * 100)"
+              :percentage="Math.min(100, Math.round((stats.assignedSeats / stats.needsSeat) * 100))"
               style="margin-top: 12px"
             />
           </n-card>
