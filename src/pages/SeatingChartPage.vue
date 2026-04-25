@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { NButton, NTabs, NTabPane, NText } from 'naive-ui'
+import { NButton, NTabs, NTabPane } from 'naive-ui'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGuestStore } from '@/stores/useGuestStore'
 import TableCard from '@/components/seating/TableCard.vue'
@@ -37,21 +37,20 @@ const sortedTables = computed(() =>
           icon="🪑" title="No tables yet"
           description="Click '+ Add Table' to start laying out your seating."
         />
-        <div v-else class="tables-grid">
-          <TableCard
-            v-for="table in sortedTables" :key="table.id"
-            :table="table"
-            :unassigned-guests="unassigned"
-            @delete="seatingStore.deleteTable($event)"
-          />
+        <div v-else style="display: flex; gap: 16px; align-items: flex-start;">
+          <div class="tables-grid">
+            <TableCard
+              v-for="table in sortedTables" :key="table.id"
+              :table="table"
+              @delete="seatingStore.deleteTable($event)"
+            />
+          </div>
+          <UnassignedGuestList :guests="unassigned" />
         </div>
       </n-tab-pane>
 
       <!-- ── Floor Plan tab ─────────────────────────────────────────────────── -->
       <n-tab-pane name="floorplan" tab="Floor Plan">
-        <n-text depth="3" style="font-size: 12px; display: block; margin-bottom: 12px;">
-          Click a table to select it, then drag to reposition. Click a corner handle to rotate 45°. Drag guests from the panel onto seats.
-        </n-text>
         <div style="display: flex; gap: 16px; align-items: flex-start;">
           <div class="seating-canvas" :style="{ minHeight: seatingStore.tables.length ? '1000px' : '200px' }">
             <EmptyState
@@ -79,6 +78,7 @@ const sortedTables = computed(() =>
   flex-wrap: wrap;
   gap: 16px;
   padding-top: 8px;
+  flex: 1;
 }
 .seating-canvas {
   flex: 1;

@@ -1,20 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+import { NPopover, NSelect } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGroupStore } from '@/stores/useGroupStore'
-import type { Guest } from '@/types'
 
 const props = defineProps<{
   tableId: string
   seatIndex: number
   guestId: string | null
-  unassignedGuests: Guest[]
 }>()
 
 const guestStore = useGuestStore()
 const seatingStore = useSeatingStore()
 const groupStore = useGroupStore()
+
+const showPopover = ref(false)
 
 const guest = computed(() => props.guestId ? guestStore.getById(props.guestId) : null)
 
@@ -22,6 +23,13 @@ const groupColor = computed(() => {
   if (!guest.value?.groupId) return null
   return groupStore.getById(guest.value.groupId)?.color ?? null
 })
+
+const selectOptions = computed(() =>
+  guestStore.unassignedGuests.map(g => ({
+    label: `${g.firstName} ${g.lastName}`,
+    value: g.id,
+  }))
+)
 
 function onDrop(event: DragEvent) {
   event.preventDefault()
@@ -36,25 +44,42 @@ function onDragOver(event: DragEvent) {
 function unassign() {
   if (props.guestId) seatingStore.unassignGuest(props.guestId)
 }
+
+function onSelectGuest(val: string) {
+  seatingStore.assignGuest(props.tableId, props.seatIndex, val)
+  showPopover.value = false
+}
 </script>
 
 <template>
-  <div
-    class="seat-badge"
-    :class="{ occupied: !!guest, empty: !guest }"
-    :style="groupColor ? { borderLeftColor: groupColor, borderLeftWidth: '3px', borderLeftStyle: 'solid', background: groupColor + '18' } : {}"
-    @drop="onDrop"
-    @dragover="onDragOver"
-  >
-    <template v-if="guest">
-      <span v-if="groupColor" class="group-dot" :style="{ background: groupColor }" :title="groupStore.getById(guest.groupId!)?.name" />
-      <span class="guest-name">{{ guest.firstName }} {{ guest.lastName[0] }}.</span>
-      <button class="unassign-btn" title="Unassign" @click.stop="unassign">×</button>
+  <n-popover v-model:show="showPopover" trigger="click" placement="top" :keep-alive-on-hover="false">
+    <template #trigger>
+      <div
+        class="seat-badge"
+        :class="{ occupied: !!guest, empty: !guest }"
+        :style="groupColor ? { borderLeftColor: groupColor, borderLeftWidth: '3px', borderLeftStyle: 'solid', background: groupColor + '18' } : {}"
+        @drop="onDrop"
+        @dragover="onDragOver"
+      >
+        <template v-if="guest">
+          <span v-if="groupColor" class="group-dot" :style="{ background: groupColor }" :title="groupStore.getById(guest.groupId!)?.name" />
+          <span class="guest-name">{{ guest.firstName }} {{ guest.lastName[0] }}.</span>
+          <button class="unassign-btn" title="Unassign" @click.stop="unassign">×</button>
+        </template>
+        <template v-else>
+          <span class="empty-label">Seat {{ seatIndex + 1 }}</span>
+        </template>
+      </div>
     </template>
-    <template v-else>
-      <span class="empty-label">Seat {{ seatIndex + 1 }}</span>
-    </template>
-  </div>
+    <div style="width: 200px;">
+      <n-select
+        filterable
+        placeholder="Assign guest…"
+        :options="selectOptions"
+        @update:value="onSelectGuest"
+      />
+    </div>
+  </n-popover>
 </template>
 
 <style scoped>
@@ -68,6 +93,7 @@ function unassign() {
   margin: 2px 0;
   min-height: 26px;
   border: 1px dashed #ccc;
+  cursor: pointer;
 }
 .occupied {
   border-color: #86efac;
@@ -76,6 +102,11 @@ function unassign() {
 .empty {
   background: #fafafa;
   color: #aaa;
+}
+.empty:hover {
+  background: #f0f9ff;
+  border-color: #93c5fd;
+  color: #3b82f6;
 }
 .group-dot {
   width: 8px;

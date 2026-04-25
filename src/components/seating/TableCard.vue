@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { NCard, NTag, NButton, NPopconfirm, NInputNumber, NSpace } from 'naive-ui'
-import type { Table, Guest } from '@/types'
+import { NCard, NTag, NButton, NPopconfirm, NInputNumber, NSpace, NInput } from 'naive-ui'
+import type { Table } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import SeatBadge from './SeatBadge.vue'
 
-const props = defineProps<{ table: Table; unassignedGuests: Guest[] }>()
+const props = defineProps<{ table: Table }>()
 const emit = defineEmits<{ (e: 'delete', id: string): void }>()
 const seatingStore = useSeatingStore()
 
@@ -19,7 +19,15 @@ function updateCapacity(val: number | null) {
 </script>
 
 <template>
-  <n-card :title="table.name" size="small" style="width: 220px;">
+  <n-card size="small" style="width: 220px;">
+    <template #header>
+      <n-input
+        :value="table.name"
+        size="small"
+        style="font-weight: 600;"
+        @update:value="seatingStore.updateTable(table.id, { name: $event })"
+      />
+    </template>
     <template #header-extra>
       <n-tag size="small">{{ table.shape === 'round' ? '⭕' : '⬜' }} {{ table.capacity }}</n-tag>
     </template>
@@ -30,7 +38,6 @@ function updateCapacity(val: number | null) {
       :table-id="table.id"
       :seat-index="seat.index"
       :guest-id="seat.guestId"
-      :unassigned-guests="unassignedGuests"
     />
 
     <div class="table-dims-edit">

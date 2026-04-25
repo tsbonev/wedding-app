@@ -86,10 +86,15 @@ export const useSeatingStore = defineStore('seating', () => {
     if (newCapacity > current) {
       for (let i = current; i < newCapacity; i++) table.seats.push({ index: i, guestId: null })
     } else {
-      for (let i = newCapacity; i < current; i++) {
-        if (table.seats[i].guestId) guestStore.updateGuest(table.seats[i].guestId!, { tableId: null })
+      // Compact: shift all occupied guests to the front, only unassign overflow
+      const occupiedIds = table.seats.filter(s => s.guestId !== null).map(s => s.guestId!)
+      for (let i = newCapacity; i < occupiedIds.length; i++) {
+        guestStore.updateGuest(occupiedIds[i], { tableId: null })
       }
-      table.seats = table.seats.slice(0, newCapacity)
+      table.seats = Array.from({ length: newCapacity }, (_, i) => ({
+        index: i,
+        guestId: occupiedIds[i] ?? null,
+      }))
     }
     table.capacity = newCapacity
   }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { NTooltip } from 'naive-ui'
+import { NTooltip, NPopover, NSelect } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useMenuStore } from '@/stores/useMenuStore'
@@ -18,6 +18,8 @@ const groupStore = useGroupStore()
 const menuStore = useMenuStore()
 const seatingStore = useSeatingStore()
 
+const showPopover = ref(false)
+
 const guest = computed(() => props.guestId ? guestStore.getById(props.guestId) : null)
 const groupInfo = computed(() => guest.value?.groupId ? groupStore.getById(guest.value.groupId) ?? null : null)
 const groupColor = computed(() => groupInfo.value?.color ?? null)
@@ -34,6 +36,17 @@ const initials = computed(() => {
 const fullName = computed(() =>
   guest.value ? `${guest.value.firstName} ${guest.value.lastName}` : `Seat ${props.seatIndex + 1}`
 )
+
+const selectOptions = computed(() => {
+  const opts = guestStore.unassignedGuests.map(g => ({
+    label: `${g.firstName} ${g.lastName}`,
+    value: g.id,
+  }))
+  if (props.guestId) {
+    opts.unshift({ label: '— Unassign —', value: '__unassign__' })
+  }
+  return opts
+})
 
 const isDragOver = ref(false)
 
@@ -74,46 +87,68 @@ function onDrop(event: DragEvent) {
 function unassign() {
   if (props.guestId) seatingStore.unassignGuest(props.guestId)
 }
+
+function onSelectGuest(val: string) {
+  if (val === '__unassign__') {
+    unassign()
+  } else {
+    seatingStore.assignGuest(props.tableId, props.seatIndex, val)
+  }
+  showPopover.value = false
+}
 </script>
 
 <template>
-  <n-tooltip trigger="hover" :disabled="!guest" placement="top" :keep-alive-on-hover="false">
+  <n-popover v-model:show="showPopover" trigger="click" placement="top" :keep-alive-on-hover="false">
     <template #trigger>
-      <div
-        class="seat-token"
-        :class="{
-          'is-occupied': !!guest,
-          'is-empty': !guest,
-          'is-drag-over': isDragOver,
-        }"
-        :style="guest && groupColor ? { background: groupColor } : {}"
-        :draggable="!!guest"
-        @dragstart="onDragStart"
-        @dragover="onDragOver"
-        @dragleave="onDragLeave"
-        @drop="onDrop"
-        @dblclick="unassign"
-      >
-        <div
-          class="seat-content"
-          :style="rotation ? { transform: `rotate(${-rotation}deg)` } : {}"
-        >
-          <span v-if="guest" class="initials">{{ initials }}</span>
-          <span v-else class="seat-num">{{ seatIndex + 1 }}</span>
+      <n-tooltip trigger="hover" :disabled="!guest || showPopover" placement="top" :keep-alive-on-hover="false">
+        <template #trigger>
+          <div
+            class="seat-token"
+            :class="{
+              'is-occupied': !!guest,
+              'is-empty': !guest,
+              'is-drag-over': isDragOver,
+            }"
+            :style="guest && groupColor ? { background: groupColor } : {}"
+            :draggable="!!guest"
+            @dragstart="onDragStart"
+            @dragover="onDragOver"
+            @dragleave="onDragLeave"
+            @drop="onDrop"
+            @contextmenu.prevent="unassign"
+          >
+            <div
+              class="seat-content"
+              :style="rotation ? { transform: `rotate(${-rotation}deg)` } : {}"
+            >
+              <span v-if="guest" class="initials">{{ initials }}</span>
+              <span v-else class="seat-num">{{ seatIndex + 1 }}</span>
+            </div>
+          </div>
+        </template>
+
+        <div v-if="guest" class="seat-tooltip">
+          <div class="tooltip-name">{{ fullName }}</div>
+          <div v-if="groupInfo" class="tooltip-row">
+            <span class="group-dot" :style="{ background: groupInfo.color }" />
+            {{ groupInfo.name }}
+          </div>
+          <div v-if="mealOption" class="tooltip-row">{{ mealOption.emoji }} {{ mealOption.label }}</div>
+          <div v-if="guest.dietaryNotes" class="tooltip-row tooltip-diet">{{ guest.dietaryNotes }}</div>
         </div>
-      </div>
+      </n-tooltip>
     </template>
 
-    <div v-if="guest" class="seat-tooltip">
-      <div class="tooltip-name">{{ fullName }}</div>
-      <div v-if="groupInfo" class="tooltip-row">
-        <span class="group-dot" :style="{ background: groupInfo.color }" />
-        {{ groupInfo.name }}
-      </div>
-      <div v-if="mealOption" class="tooltip-row">{{ mealOption.emoji }} {{ mealOption.label }}</div>
-      <div v-if="guest.dietaryNotes" class="tooltip-row tooltip-diet">{{ guest.dietaryNotes }}</div>
+    <div style="width: 200px;">
+      <n-select
+        filterable
+        placeholder="Assign guest…"
+        :options="selectOptions"
+        @update:value="onSelectGuest"
+      />
     </div>
-  </n-tooltip>
+  </n-popover>
 </template>
 
 <style scoped>
@@ -130,6 +165,7 @@ function unassign() {
   user-select: none;
   transition: transform 0.1s, box-shadow 0.1s;
   box-sizing: border-box;
+  cursor: pointer;
 }
 .seat-content {
   display: flex;
@@ -155,8 +191,12 @@ function unassign() {
   background: #f9fafb;
   color: #9ca3af;
   border-style: dashed;
-  cursor: default;
   font-size: 10px;
+}
+.is-empty:hover {
+  border-color: #60a5fa;
+  background: #eff6ff;
+  color: #3b82f6;
 }
 .is-drag-over.is-empty {
   border-color: #60a5fa;
