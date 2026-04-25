@@ -476,6 +476,8 @@ function setOrigin(corner: SeatOriginCorner) {
 }
 .rect-body {
   background: #d1d5db;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
   border-radius: 6px;
   display: flex;
   flex-direction: column;
@@ -503,6 +505,8 @@ function setOrigin(corner: SeatOriginCorner) {
   position: absolute;
   border-radius: 50%;
   background: #d1d5db;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
   display: flex;
   flex-direction: column;
   align-items: center;

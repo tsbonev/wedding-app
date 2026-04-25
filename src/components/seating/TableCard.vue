@@ -113,10 +113,12 @@ const sortedSeats = computed(() =>
 <template>
   <n-card size="small" style="width: 220px;">
     <template #header>
+      <div class="print-table-name">{{ localName }}</div>
       <n-input
         v-model:value="localName"
         size="small"
         style="font-weight: 600;"
+        class="no-print-input"
         @blur="updateName"
         @keyup.enter="updateName"
       />
@@ -143,7 +145,18 @@ const sortedSeats = computed(() =>
       </div>
     </template>
 
-    <div class="table-dims-edit-top">
+    <div class="print-table-info">
+      {{ table.shape === 'round' ? '⚪' : '⬜' }}
+      {{ table.capacity }} {{ i18n.t('seats') }} |
+      <template v-if="table.shape === 'rectangular'">
+        {{ table.lengthCm }}x{{ table.widthCm }} cm
+      </template>
+      <template v-else>
+        Ø {{ table.widthCm }} cm
+      </template>
+    </div>
+
+    <div class="table-dims-edit-top no-print">
       <n-space size="small">
         <div v-if="table.shape === 'rectangular'">
           <div class="dim-label">{{ i18n.t('length') }}</div>
@@ -209,5 +222,56 @@ const sortedSeats = computed(() =>
   font-size: 10px;
   color: #94a3b8;
   margin-bottom: 2px;
+}
+.print-table-info {
+  display: none;
+}
+.print-table-name {
+  display: none;
+}
+@media print {
+  .print-table-name {
+    display: block !important;
+    font-weight: 600;
+  }
+  .print-table-info {
+    display: block !important;
+    font-size: 11px;
+    color: #64748b;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .no-print-input, .no-print {
+    display: none !important;
+  }
+  .n-card__action,
+  :deep(.n-card__action),
+  .table-dims-edit-top, 
+  .n-card-header__extra,
+  :deep(.n-card-header__extra) {
+    display: none !important;
+  }
+  .n-card {
+    border: 1px solid #e2e8f0 !important;
+    break-inside: avoid;
+    width: 100% !important;
+  }
+  :deep(.n-card-header) {
+    padding: 8px 12px !important;
+  }
+  :deep(.n-card__content) {
+    padding: 0 12px 8px 12px !important;
+  }
+  :deep(.n-card-header__main) {
+    font-size: 14px !important;
+  }
+  :deep(.n-input), :deep(.n-input__border), :deep(.n-input__state-border) {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  :deep(.n-input-wrapper) {
+    padding: 0 !important;
+  }
 }
 </style>

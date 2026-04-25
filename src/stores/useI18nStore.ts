@@ -105,6 +105,13 @@ export const useI18nStore = defineStore('i18n', () => {
       add_room: 'Add Room',
       list_view: 'List View',
       assignment_view: 'Assignment View',
+      print: 'Print',
+      export_pdf: 'Export PDF',
+      exporting_pdf: 'Exporting PDF...',
+      export_success: 'Export successful!',
+      export_failed: 'Export failed. Please try again.',
+      date: 'Date',
+      venue_label: 'Venue',
       no_rooms_yet: 'No rooms yet',
       add_rooms_instruction: 'Add hotel rooms to start assigning guests.',
       no_guests_assigned: 'No guests assigned',
@@ -187,6 +194,7 @@ export const useI18nStore = defineStore('i18n', () => {
       select_all: 'Select All',
       unselect_all: 'Unselect All',
       clear: 'Clear',
+      seat_label: 'Seat #{n}',
     },
     bg: {
       dashboard: 'Табло',
@@ -286,6 +294,13 @@ export const useI18nStore = defineStore('i18n', () => {
       add_room: 'Добави стая',
       list_view: 'Списък',
       assignment_view: 'Разпределение',
+      print: 'Печат',
+      export_pdf: 'Експорт PDF',
+      exporting_pdf: 'Експортиране на PDF...',
+      export_success: 'Експортирането завърши успешно!',
+      export_failed: 'Грешка при експортиране. Моля, опитайте пак.',
+      date: 'Дата',
+      venue_label: 'Място',
       no_rooms_yet: 'Все още няма стаи',
       add_rooms_instruction: 'Добавете хотелски стаи, за да започнете настаняването на гостите.',
       no_guests_assigned: 'Няма настанени гости',
@@ -368,6 +383,7 @@ export const useI18nStore = defineStore('i18n', () => {
       select_all: 'Избери всички',
       unselect_all: 'Премахни всички',
       clear: 'Изчисти',
+      seat_label: 'Място №{n}',
     }
   }
 

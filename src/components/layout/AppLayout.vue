@@ -40,10 +40,33 @@ window.addEventListener('resize', () => { isMobile.value = window.innerWidth < 7
     </n-drawer>
 
     <n-layout-content content-style="padding: 24px; overflow-y: auto;">
-      <n-button v-if="isMobile" quaternary @click="drawerOpen = true" style="margin-bottom:12px;">
+      <n-button v-if="isMobile" quaternary @click="drawerOpen = true" style="margin-bottom:12px;" class="no-print">
         ☰ Menu
       </n-button>
       <RouterView />
     </n-layout-content>
   </n-layout>
 </template>
+
+<style scoped>
+@media print {
+  .n-layout-sider, 
+  :deep(.n-layout-sider),
+  .no-print {
+    display: none !important;
+  }
+  .n-layout-content,
+  :deep(.n-layout-content),
+  :deep(.n-layout-scroll-container) {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  .n-layout,
+  :deep(.n-layout) {
+    height: auto !important;
+    display: block !important;
+  }
+}
+</style>

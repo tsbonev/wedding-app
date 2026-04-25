@@ -6,6 +6,7 @@ import type { SeatOriginCorner } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGroupStore } from '@/stores/useGroupStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 
 const props = defineProps<{
   tableId: string
@@ -18,6 +19,7 @@ const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
 const guestStore = useGuestStore()
 const seatingStore = useSeatingStore()
 const groupStore = useGroupStore()
+const i18n = useI18nStore()
 
 const showDropdown = ref(false)
 const selectRef = ref<InstanceType<typeof NSelect> | null>(null)
@@ -177,7 +179,9 @@ function onDoubleClick() {
       <template v-if="guest">
         <span v-if="groupColor" class="group-dot" :style="{ background: groupColor }" :title="groupStore.getById(guest.groupId!)?.name" />
         <span class="guest-name">
-          <strong class="seat-num-badge">{{ displaySeatNumber }}</strong>. {{ guest.firstName }} {{ guest.lastName[0] }}.
+          <strong class="seat-num-badge">{{ displaySeatNumber }}</strong>.
+          <span class="name-short">{{ guest.firstName }} {{ guest.lastName[0] }}.</span>
+          <span class="name-full">{{ guest.firstName }} {{ guest.lastName }}</span>
           <template v-if="guest.customEmoji">
             <span :title="guest.customEmoji">{{ guest.customEmoji }}</span>
           </template>
@@ -190,7 +194,7 @@ function onDoubleClick() {
         <button class="unassign-btn" title="Unassign" @click.stop="unassign">×</button>
       </template>
       <template v-else>
-        <span class="empty-label">Seat {{ displaySeatNumber }}</span>
+        <span class="empty-label">{{ i18n.t('seat_label').replace('{n}', String(displaySeatNumber)) }}</span>
       </template>
     </div>
 
@@ -227,7 +231,6 @@ function onDoubleClick() {
   cursor: pointer;
 }
 .occupied {
-  border-color: #86efac;
   border-style: solid;
   cursor: grab;
 }
@@ -280,5 +283,35 @@ function onDoubleClick() {
   right: 0;
   z-index: 100;
   min-width: 160px;
+}
+.name-full {
+  display: none;
+}
+@media print {
+  .name-short, .unassign-btn {
+    display: none !important;
+  }
+  .name-full {
+    display: inline !important;
+  }
+  .seat-badge {
+    border-style: solid !important;
+    background-color: transparent !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color: black !important;
+    font-size: 11px !important;
+    padding: 1px 4px !important;
+    margin: 1px 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+  .group-dot {
+    width: 6px !important;
+    height: 6px !important;
+  }
+  .seat-num-badge {
+    font-size: 11px !important;
+  }
 }
 </style>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { NButton, NTabs, NTabPane, NRadioGroup, NRadioButton, NSwitch, NButtonGroup } from 'naive-ui'
+import { ref, computed, watch, nextTick } from 'vue'
+import { NButton, NTabs, NTabPane, NRadioGroup, NRadioButton, NSwitch, NButtonGroup, useMessage } from 'naive-ui'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
@@ -18,6 +20,7 @@ const seatingStore = useSeatingStore()
 const guestStore = useGuestStore()
 const configStore = useAppConfigStore()
 const i18n = useI18nStore()
+const message = useMessage()
 
 const showAddModal = ref(false)
 
@@ -141,10 +144,95 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
     configStore.fitCanvasToTables(seatingStore.tables)
   }
 })
+
+async function handlePrint() {
+  if (configStore.seatingActiveTab === 'floorplan') {
+    const canvasEl = document.querySelector('.seating-canvas') as HTMLElement
+    if (!canvasEl) return
+
+    const msg = message.loading(i18n.t('exporting_pdf') || 'Exporting PDF...', { duration: 0 })
+    
+    try {
+      // 1. Prepare for capture
+      const originalZoom = configStore.zoomLevel
+      const originalPanX = configStore.panX
+      const originalPanY = configStore.panY
+      
+      // Fit to content first to find the bounds
+      configStore.fitCanvasToTables(seatingStore.tables)
+      
+      // Use zoom level 2 for better quality if needed, but 1 is usually enough for A4
+      configStore.zoomLevel = 1
+      configStore.panX = 0
+      configStore.panY = 0
+      
+      // Wait for DOM and relations to update
+      await nextTick()
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // 2. Capture
+      const canvas = await html2canvas(canvasEl, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Higher scale for better PDF quality
+        logging: false,
+        useCORS: true,
+        allowTaint: true
+      })
+
+      // 3. Create PDF
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      })
+
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = pdf.internal.pageSize.getHeight()
+      const imgWidth = canvas.width
+      const imgHeight = canvas.height
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
+      
+      const finalWidth = imgWidth * ratio
+      const finalHeight = imgHeight * ratio
+      
+      // Center on page
+      const x = (pdfWidth - finalWidth) / 2
+      const y = (pdfHeight - finalHeight) / 2
+
+      pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight)
+
+      pdf.save(`wedding-floor-plan-${new Date().toISOString().slice(0, 10)}.pdf`)
+      
+      // 4. Restore
+      configStore.zoomLevel = originalZoom
+      configStore.panX = originalPanX
+      configStore.panY = originalPanY
+      
+      msg.destroy()
+      message.success(i18n.t('export_success') || 'Export successful!')
+    } catch (error) {
+      console.error('PDF Export failed:', error)
+      msg.destroy()
+      message.error(i18n.t('export_failed') || 'Export failed. Please try again.')
+    }
+  } else {
+    window.print()
+  }
+}
 </script>
 
 <template>
   <div @mousemove="onMouseMove" @dragover="onMouseMove">
+      <!-- Print-only header -->
+      <div class="print-header">
+        <h1 v-if="configStore.coupleName">{{ configStore.coupleName }}</h1>
+        <div class="print-meta">
+          <span v-if="configStore.weddingDate"><strong>{{ i18n.t('date') }}:</strong> {{ configStore.weddingDate }}</span>
+          <span v-if="configStore.venue"><strong>{{ i18n.t('venue_label') }}:</strong> {{ configStore.venue }}</span>
+        </div>
+      </div>
+
     <n-tabs v-model:value="configStore.seatingActiveTab" type="line">
       <template #suffix>
         <div style="display: flex; gap: 8px; align-items: center;">
@@ -152,12 +240,23 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
             v-if="configStore.seatingActiveTab === 'tables'"
             size="small" 
             :type="configStore.isGuestSidebarOpen ? 'primary' : 'default'"
+            class="no-print"
             @click="configStore.isGuestSidebarOpen = !configStore.isGuestSidebarOpen"
           >
             {{ configStore.isGuestSidebarOpen ? i18n.t('hide') : i18n.t('show') }} {{ i18n.t('unassigned') }}
           </n-button>
-          <n-button v-if="configStore.seatingActiveTab === 'tables' || configStore.seatingActiveTab === 'floorplan'" type="primary" size="small" @click="showAddModal = true">
+          <n-button v-if="configStore.seatingActiveTab === 'tables' || configStore.seatingActiveTab === 'floorplan'" type="primary" size="small" class="no-print" @click="showAddModal = true">
             + {{ i18n.t('add_table') }}
+          </n-button>
+          <n-button
+            v-if="configStore.seatingActiveTab === 'tables' || configStore.seatingActiveTab === 'floorplan'"
+            type="info"
+            size="small"
+            secondary
+            class="no-print"
+            @click="handlePrint"
+          >
+            🖨️ {{ configStore.seatingActiveTab === 'floorplan' ? i18n.t('export_pdf') : i18n.t('print') }}
           </n-button>
         </div>
       </template>
@@ -208,17 +307,17 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
             </div>
 
             <div style="display: flex; gap: 16px; align-items: center; border-left: 1px solid #e2e8f0; padding-left: 16px;">
-              <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="display: flex; gap: 8px; align-items: center;" class="no-print">
                 <span style="font-size: 13px; color: #64748b;">{{ i18n.t('partners') }}</span>
                 <n-switch v-model:value="configStore.showRelationLines" size="small" />
               </div>
-              <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="display: flex; gap: 8px; align-items: center;" class="no-print">
                 <span style="font-size: 13px; color: #64748b;">{{ i18n.t('parental') }}</span>
                 <n-switch v-model:value="configStore.showParentalLines" size="small" />
               </div>
             </div>
 
-            <div style="font-size: 13px; color: #64748b; flex: 1;">
+            <div style="font-size: 13px; color: #64748b; flex: 1;" class="no-print">
               <template v-if="configStore.isLinkingMode">
                 {{ configStore.linkingModeType === 'partner' ? i18n.t('drag_partner') : i18n.t('drag_child') }}
               </template>
@@ -227,7 +326,7 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
               </template>
             </div>
 
-          <div style="border-left: 1px solid #e2e8f0; padding-left: 16px; display: flex; gap: 8px;">
+          <div style="border-left: 1px solid #e2e8f0; padding-left: 16px; display: flex; gap: 8px;" class="no-print">
             <n-button 
               size="small" 
               :type="configStore.isGuestSidebarOpen ? 'primary' : 'default'"
@@ -246,6 +345,7 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
             >
               <div 
                 class="seating-canvas" 
+                :class="{ 'is-printing-floorplan': configStore.seatingActiveTab === 'floorplan' }"
                 :style="{ 
                   width: configStore.canvasWidth + 'px',
                   height: configStore.canvasHeight + 'px',
@@ -308,6 +408,93 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
   padding-top: 8px;
   flex: 1;
 }
+
+@media print {
+  /* Default A4 portrait for Tables view */
+  @page {
+    size: A4 portrait;
+    margin: 1cm;
+  }
+  
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+  }
+  .print-header h1 {
+    margin: 0 0 5px 0;
+    font-size: 24px;
+    color: #334155;
+  }
+  .print-meta {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 14px;
+    color: #64748b;
+  }
+
+  .unassigned-list,
+  :deep(.unassigned-list),
+  .n-tabs-nav,
+  :deep(.n-tabs-nav) {
+    display: none !important;
+  }
+
+  .tables-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Floor Plan specific print styles */
+  .is-printing-floorplan {
+    transform: none !important;
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 1000px !important;
+    background: white !important;
+    display: block !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Specific A4 landscape for Floor Plan */
+  :deep(.is-printing-floorplan) {
+    page: floorplan;
+  }
+  @page floorplan {
+    size: A4 landscape;
+    margin: 0.5cm;
+  }
+
+  .canvas-viewport {
+    overflow: visible !important;
+    height: auto !important;
+    display: block !important;
+    background: white !important;
+  }
+
+  .canvas-controls, .no-print {
+    display: none !important;
+  }
+
+  body, #app, .n-config-provider {
+    background: white !important;
+  }
+
+  /* Ensure the container of tables-grid doesn't have restrictive styles */
+  :deep(.n-tabs-pane-wrapper), 
+  :deep(.n-tab-pane) {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
 .canvas-viewport {
   flex: 1;
   position: relative;
@@ -351,5 +538,8 @@ watch(() => configStore.seatingActiveTab, (newTab) => {
   text-align: center;
   color: #64748b;
   font-weight: 600;
+}
+.print-header {
+  display: none;
 }
 </style>

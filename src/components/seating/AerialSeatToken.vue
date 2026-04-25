@@ -8,6 +8,7 @@ import { useGroupStore } from '@/stores/useGroupStore'
 import { useMenuStore } from '@/stores/useMenuStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
+import { useI18nStore } from '@/stores/useI18nStore'
 
 const props = defineProps<{
   tableId: string
@@ -23,6 +24,7 @@ const groupStore = useGroupStore()
 const menuStore = useMenuStore()
 const seatingStore = useSeatingStore()
 const configStore = useAppConfigStore()
+const i18n = useI18nStore()
 
 const showDropdown = ref(false)
 const selectRef = ref<InstanceType<typeof NSelect> | null>(null)
@@ -59,7 +61,7 @@ const initials = computed(() => {
 })
 
 const fullName = computed(() =>
-  guest.value ? `${guest.value.firstName} ${guest.value.lastName}` : `Seat ${props.seatIndex + 1}`
+  guest.value ? `${guest.value.firstName} ${guest.value.lastName}` : i18n.t('seat_label').replace('{n}', String(displaySeatNumber.value))
 )
 
 // ── Display seat number based on origin corner ────────────────────────────────
@@ -368,6 +370,8 @@ function onDoubleClick() {
   cursor: grab;
   border-color: transparent;
   font-size: 13px;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 .is-occupied:hover {
   transform: scale(1.1) rotate(calc(v-bind('rotation || 0') * -1deg));
@@ -411,6 +415,8 @@ function onDoubleClick() {
   box-shadow: 0 2px 4px rgba(0,0,0,0.25);
   cursor: pointer;
   pointer-events: auto;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 .adjoining-child-content {
   display: flex;
