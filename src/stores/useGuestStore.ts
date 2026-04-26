@@ -71,5 +71,11 @@ export const useGuestStore = defineStore('guests', () => {
     guests.value = list
   }
 
-  return { guests, getById, isGuestAssignedToTable, confirmedGuests, unassignedGuests, unassignedRoomGuests, addGuest, updateGuest, deleteGuest, bulkReplace }
+  function bulkUpdateGuests(ids: string[], patch: Partial<Guest>) {
+    ids.forEach(id => {
+      updateGuest(id, patch)
+    })
+  }
+
+  return { guests, getById, isGuestAssignedToTable, confirmedGuests, unassignedGuests, unassignedRoomGuests, addGuest, updateGuest, deleteGuest, bulkUpdateGuests, bulkReplace }
 }, { persist: true })

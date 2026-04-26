@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, h } from 'vue'
 import {
-  NButton, NSpace, NInput, NSelect, NDataTable, NTag, NPopconfirm, NText
+  NButton, NSpace, NInput, NSelect, NDataTable, NTag, NPopconfirm, NText,
+  NDropdown, NTooltip
 } from 'naive-ui'
-import type { DataTableColumns, SelectOption } from 'naive-ui'
+import type { DataTableColumns, SelectOption, DataTableRowKey, DropdownOption } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useMenuStore } from '@/stores/useMenuStore'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -34,6 +35,8 @@ const groupFilter = ref('')
 const roomFilter = ref('')
 const tableFilter = ref('')
 const ageFilter = ref('')
+
+const checkedRowKeys = ref<DataTableRowKey[]>([])
 
 const rsvpFilterOptions = computed(() => [
   { label: i18n.t('all_rsvp'), value: '' },
@@ -164,19 +167,31 @@ const groupCellOptions = computed<(SelectOption & { color?: string })[]>(() => [
 ])
 
 function renderGroupLabel(option: SelectOption & { color?: string }) {
-  if (!option.color) return h('span', String(option.label))
-  return h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
-    h('span', { style: `width:10px;height:10px;border-radius:50%;background:${option.color};display:inline-block;flex-shrink:0` }),
-    h('span', String(option.label)),
-  ])
+  const content = option.color 
+    ? h('div', { style: 'display:flex;align-items:center;gap:8px;overflow:hidden' }, [
+        h('span', { style: `width:10px;height:10px;border-radius:50%;background:${option.color};display:inline-block;flex-shrink:0` }),
+        h('span', { style: 'text-overflow:ellipsis;overflow:hidden;white-space:nowrap' }, String(option.label)),
+      ])
+    : h('span', String(option.label))
+
+  return h(NTooltip, { trigger: 'hover', placement: 'top-start' }, {
+    trigger: () => content,
+    default: () => String(option.label)
+  })
 }
 
 function renderSingleSelectLabel(option: SelectOption & { color?: string }) {
-  if (!option.color) return h('span', String(option.label))
-  return h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
-    h('span', { style: `width:10px;height:10px;border-radius:50%;background:${option.color};display:inline-block;flex-shrink:0` }),
-    h('span', String(option.label)),
-  ])
+  const content = option.color 
+    ? h('div', { style: 'display:flex;align-items:center;gap:8px;overflow:hidden' }, [
+        h('span', { style: `width:10px;height:10px;border-radius:50%;background:${option.color};display:inline-block;flex-shrink:0` }),
+        h('span', { style: 'text-overflow:ellipsis;overflow:hidden;white-space:nowrap' }, String(option.label)),
+      ])
+    : h('span', String(option.label))
+
+  return h(NTooltip, { trigger: 'hover', placement: 'top-start' }, {
+    trigger: () => content,
+    default: () => String(option.label)
+  })
 }
 
 // ── Misc helpers ──────────────────────────────────────────────────────────────
@@ -214,13 +229,85 @@ function openEdit(guest: Guest) {
   showModal.value = true
 }
 
+const massEditOptions = computed(() => [
+  {
+    label: i18n.t('rsvp_status'),
+    key: 'rsvp',
+    children: [
+      { label: i18n.t('confirmed'), key: 'rsvp-confirmed' },
+      { label: i18n.t('pending'), key: 'rsvp-pending' },
+      { label: i18n.t('declined'), key: 'rsvp-declined' }
+    ]
+  },
+  {
+    label: i18n.t('group'),
+    key: 'group',
+    children: [
+      { label: `— ${i18n.t('none')} —`, key: 'group-none' },
+      ...groupStore.groups.map(g => ({ label: g.name, key: `group-${g.id}`, color: g.color }))
+    ]
+  },
+  {
+    label: i18n.t('selected_menu'),
+    key: 'menu',
+    children: [
+      { label: `— ${i18n.t('none')} —`, key: 'menu-none' },
+      ...menuStore.menuOptions.map(o => ({ label: `${o.emoji} ${o.label}`, key: `menu-${o.id}` }))
+    ]
+  }
+])
+
+function renderMassEditLabel(option: DropdownOption) {
+  if (String(option.key).startsWith('group-') && option.color) {
+    const content = h(NSpace, { align: 'center', size: 'small', style: 'flex-wrap: nowrap; overflow: hidden;' }, {
+      default: () => [
+        h(NTag, {
+          color: { color: String(option.color), textColor: '#fff' },
+          bordered: false,
+          size: 'small',
+          style: 'width: 12px; height: 12px; padding: 0; border-radius: 50%; flex-shrink: 0;'
+        }),
+        h('span', { style: 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap;' }, String(option.label))
+      ]
+    })
+
+    return h(NTooltip, { trigger: 'hover', placement: 'right' }, {
+      trigger: () => content,
+      default: () => String(option.label)
+    })
+  }
+  return String(option.label)
+}
+
+function handleMassEdit(key: string) {
+  const ids = checkedRowKeys.value as string[]
+  if (ids.length === 0) return
+
+  if (key.startsWith('rsvp-')) {
+    const status = key.replace('rsvp-', '') as RSVPStatus
+    guestStore.bulkUpdateGuests(ids, { rsvpStatus: status })
+  } else if (key.startsWith('group-')) {
+    const groupId = key.replace('group-', '')
+    guestStore.bulkUpdateGuests(ids, { groupId: groupId === 'none' ? null : groupId })
+  } else if (key.startsWith('menu-')) {
+    const mealId = key.replace('menu-', '')
+    guestStore.bulkUpdateGuests(ids, { mealChoiceId: mealId === 'none' ? null : mealId })
+  }
+  checkedRowKeys.value = []
+}
+
 // ── Columns ───────────────────────────────────────────────────────────────────
 // Must be `computed` so the table re-renders when editingCell / selectOpen change.
 
 const columns = computed<DataTableColumns<Guest>>(() => [
   {
+    type: 'selection',
+    width: '5%'
+  },
+  {
     title: i18n.t('first_name'),
     key: 'name',
+    width: '20%',
     render: (row) => {
       if (isEditing(row.id, 'name')) {
         return h('div', { style: 'display:flex;gap:4px;align-items:center;width:100%' }, [
@@ -253,12 +340,8 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       }
 
       const partnerLabel = getPartnerLabel(row.partnerId)
-      const grp = row.groupId ? groupStore.getById(row.groupId) : null
       return h('div', { class: 'editable-cell', onClick: () => startNameEdit(row) }, [
         h('div', { style: 'display:flex;align-items:center;gap:6px' }, [
-          grp
-            ? h('span', { style: `width:10px;height:10px;border-radius:50%;background:${grp.color};display:inline-block;flex-shrink:0` })
-            : null,
           h('span', `${row.firstName} ${row.lastName}`),
           row.customEmoji ? h('span', { title: i18n.t('custom_emoji') }, row.customEmoji) : [
             row.isGroom ? h('span', { title: i18n.t('groom') }, '🤵') : null,
@@ -269,11 +352,12 @@ const columns = computed<DataTableColumns<Guest>>(() => [
         partnerLabel ? h(NText, { depth: 3, style: 'font-size:11px;margin-top:1px' }, { default: () => partnerLabel }) : null,
       ])
     },
+    sorter: (a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
   },
   {
     title: i18n.t('group'),
     key: 'group',
-    width: 185,
+    width: '18%',
     render: (row) => {
       if (isEditing(row.id, 'group')) {
         return h(NSelect, {
@@ -296,24 +380,26 @@ const columns = computed<DataTableColumns<Guest>>(() => [
         })
       }
 
-      const grp = row.groupId ? groupStore.getById(row.groupId) : null
+      const group = row.groupId ? groupStore.getById(row.groupId) : null
       return h('div', {
         class: 'editable-cell',
         onClick: () => startSelectEdit(row.id, 'group'),
       }, [
-        grp
-          ? h('div', { style: 'display:flex;align-items:center;gap:6px' }, [
-              h('span', { style: `width:10px;height:10px;border-radius:50%;background:${grp.color};display:inline-block;flex-shrink:0` }),
-              h('span', grp.name),
-            ])
+        group
+          ? h(NTag, { color: { color: group.color, textColor: '#fff' }, bordered: false, size: 'small' }, { default: () => group.name })
           : h('span', { style: 'color:#bbb' }, '—'),
       ])
     },
+    sorter: (a, b) => {
+      const groupA = a.groupId ? groupStore.getById(a.groupId)?.name || '' : ''
+      const groupB = b.groupId ? groupStore.getById(b.groupId)?.name || '' : ''
+      return groupA.localeCompare(groupB)
+    }
   },
   {
     title: 'RSVP',
     key: 'rsvpStatus',
-    width: 135,
+    width: '12%',
     render: (row) => {
       if (isEditing(row.id, 'rsvp')) {
         return h(NSelect, {
@@ -338,11 +424,12 @@ const columns = computed<DataTableColumns<Guest>>(() => [
         onClick: () => startSelectEdit(row.id, 'rsvp'),
       }, [h(RSVPBadge, { status: row.rsvpStatus })])
     },
+    sorter: (a, b) => a.rsvpStatus.localeCompare(b.rsvpStatus)
   },
   {
     title: i18n.t('meals'),
     key: 'meal',
-    width: 155,
+    width: '15%',
     render: (row) => {
       if (isEditing(row.id, 'meal')) {
         return h(NSelect, {
@@ -367,23 +454,30 @@ const columns = computed<DataTableColumns<Guest>>(() => [
         onClick: () => startSelectEdit(row.id, 'meal'),
       }, [h('span', getMealLabel(row.mealChoiceId))])
     },
+    sorter: (a, b) => {
+      const mealA = getMealLabel(a.mealChoiceId)
+      const mealB = getMealLabel(b.mealChoiceId)
+      return mealA.localeCompare(mealB)
+    }
   },
   {
     title: i18n.t('table'),
     key: 'tableId',
-    width: 120,
+    width: '10%',
     render: (row) => row.tableId ? h(NTag, { size: 'small' }, { default: () => getTableName(row.tableId) }) : '—',
+    sorter: (a, b) => getTableName(a.tableId).localeCompare(getTableName(b.tableId))
   },
   {
     title: i18n.t('room'),
     key: 'roomId',
-    width: 120,
+    width: '10%',
     render: (row) => row.roomId ? h(NTag, { size: 'small' }, { default: () => getRoomName(row.roomId) }) : '—',
+    sorter: (a, b) => getRoomName(a.roomId).localeCompare(getRoomName(b.roomId))
   },
   {
     title: '',
     key: 'actions',
-    width: 100,
+    width: '10%',
     render: (row) =>
       h(NSpace, { size: 8, justify: 'end' }, {
         default: () => [
@@ -408,7 +502,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       </n-space>
     </n-space>
 
-    <n-space style="margin-bottom: 16px;" wrap>
+    <n-space style="margin-bottom: 16px;" wrap align="center">
       <n-input v-model:value="search" :placeholder="i18n.t('search_name')" clearable style="width: 200px" />
       <n-select v-model:value="rsvpFilter" :options="rsvpFilterOptions" style="width: 130px" />
       <n-select
@@ -417,11 +511,22 @@ const columns = computed<DataTableColumns<Guest>>(() => [
         :render-label="renderGroupLabel"
         :render-label-single="renderSingleSelectLabel"
         filterable
-        style="width: 160px"
+        style="width: 250px"
       />
       <n-select v-model:value="tableFilter" :options="tableFilterOptions" filterable style="width: 150px" />
       <n-select v-model:value="roomFilter" :options="roomFilterOptions" filterable style="width: 150px" />
-      <n-select v-model:value="ageFilter" :options="ageFilterOptions" style="width: 130px" />
+      <n-select v-model:value="ageFilter" :options="ageFilterOptions" style="width: 250px" />
+
+      <n-dropdown
+        v-if="checkedRowKeys.length > 0"
+        :options="massEditOptions"
+        :render-label="renderMassEditLabel"
+        @select="handleMassEdit"
+      >
+        <n-button type="info" ghost>
+          {{ i18n.t('mass_edit') }} ({{ checkedRowKeys.length }})
+        </n-button>
+      </n-dropdown>
     </n-space>
 
     <EmptyState
@@ -433,11 +538,13 @@ const columns = computed<DataTableColumns<Guest>>(() => [
 
     <n-data-table
       v-else
+      v-model:checked-row-keys="checkedRowKeys"
       :columns="columns"
       :data="filtered"
       :row-key="(row: Guest) => row.id"
       :pagination="{ pageSize: 20 }"
       striped
+      :sort-config="{ unselectable: false }"
     />
 
     <GuestFormModal
@@ -470,5 +577,15 @@ const columns = computed<DataTableColumns<Guest>>(() => [
 }
 .editable-cell:hover {
   background: rgba(0, 0, 0, 0.05);
+}
+
+:deep(.n-data-table-sorter) {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+:deep(.n-data-table-th--sortable:hover .n-data-table-sorter),
+:deep(.n-data-table-sorter--asc),
+:deep(.n-data-table-sorter--desc) {
+  opacity: 1;
 }
 </style>

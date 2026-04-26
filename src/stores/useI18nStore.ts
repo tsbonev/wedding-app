@@ -196,6 +196,8 @@ export const useI18nStore = defineStore('i18n', () => {
       clear: 'Clear',
       seat_label: 'Seat #{n}',
       legend: 'Legend',
+      mass_edit: 'Mass Edit',
+      selected_menu: 'Selected Menu',
     },
     bg: {
       dashboard: 'Табло',
@@ -386,6 +388,8 @@ export const useI18nStore = defineStore('i18n', () => {
       clear: 'Изчисти',
       seat_label: 'Място №{n}',
       legend: 'Легенда',
+      mass_edit: 'Масова редакция',
+      selected_menu: 'Избрано меню',
     }
   }
 

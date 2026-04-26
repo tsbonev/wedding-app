@@ -64,15 +64,16 @@ function onDoubleClick(guestId: string) {
         v-for="guest in filteredGuests"
         :key="guest.id"
         class="guest-chip"
-        :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px' } : {}"
+        :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px', background: groupColor(guest) + '18' } : {}"
         draggable="true"
         @dragstart="onDragStart($event, guest)"
         @dblclick="onDoubleClick(guest.id)"
       >
-        <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0">
+        <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:0">
           <span
             v-if="groupColor(guest)"
-            :style="`width:8px; height:8px; border-radius:50%; background:${groupColor(guest)}; flex-shrink:0`"
+            class="group-dot"
+            :style="{ background: groupColor(guest)! }"
           />
           <n-text strong style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
             {{ guest.firstName }} {{ guest.lastName }}
@@ -124,5 +125,12 @@ function onDoubleClick(guestId: string) {
 
 .guest-chip:active {
   cursor: grabbing;
+}
+
+.group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 </style>

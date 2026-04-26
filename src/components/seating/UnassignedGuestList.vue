@@ -99,7 +99,7 @@ function onDoubleClick(guestId: string) {
           :key="guest.id"
           class="guest-chip"
           :data-guest-id="guest.id"
-          :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px' } : {}"
+          :style="groupColor(guest) ? { borderLeftColor: groupColor(guest)!, borderLeftWidth: '3px', background: groupColor(guest) + '18' } : {}"
           draggable="true"
           @dragstart="onDragStart($event, guest)"
           @dragend="onDragEnd"
@@ -107,10 +107,11 @@ function onDoubleClick(guestId: string) {
           @drop="onDrop($event, guest)"
           @dblclick="onDoubleClick(guest.id)"
         >
-          <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0">
+          <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:0">
             <span
               v-if="groupColor(guest)"
-              :style="`width:8px; height:8px; border-radius:50%; background:${groupColor(guest)}; flex-shrink:0`"
+              class="group-dot"
+              :style="{ background: groupColor(guest)! }"
             />
             <span class="guest-name">{{ guest.firstName }} {{ guest.lastName }}</span>
             <template v-if="guest.customEmoji">
@@ -186,6 +187,14 @@ function onDoubleClick(guestId: string) {
 }
 .guest-chip:hover { background: #f0f9ff; border-color: #93c5fd; }
 .guest-chip:active { cursor: grabbing; }
+
+.group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .guest-name {
   white-space: nowrap;
   overflow: hidden;

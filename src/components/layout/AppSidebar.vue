@@ -15,10 +15,10 @@ const i18n = useI18nStore()
 
 const menuOptions = computed((): MenuOption[] => [
   { label: i18n.t('dashboard'), key: '/dashboard', icon: () => h('span', '📊') },
-  { label: i18n.t('guests'), key: '/guests', icon: () => h('span', '👥') },
-  { label: i18n.t('meals'), key: '/meals', icon: () => h('span', '🍽️') },
+  { label: i18n.t('guests'), key: '/guests', icon: () => h('span', '📋') },
+  { label: i18n.t('meals'), key: '/meals', icon: () => h('span', '🥂') },
   { label: i18n.t('seating'), key: '/seating', icon: () => h('span', '🪑') },
-  { label: i18n.t('rooms'), key: '/rooms', icon: () => h('span', '🏨') },
+  { label: i18n.t('rooms'), key: '/rooms', icon: () => h('span', '🛌') },
   { label: i18n.t('settings'), key: '/settings', icon: () => h('span', '⚙️') },
   { label: i18n.t('export_import'), key: '/export', icon: () => h('span', '📤') },
 ])

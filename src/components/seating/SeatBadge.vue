@@ -180,8 +180,7 @@ function onDoubleClick() {
         <span v-if="groupColor" class="group-dot" :style="{ background: groupColor }" :title="groupStore.getById(guest.groupId!)?.name" />
         <span class="guest-name">
           <strong class="seat-num-badge">{{ displaySeatNumber }}</strong>.
-          <span class="name-short">{{ guest.firstName }} {{ guest.lastName[0] }}.</span>
-          <span class="name-full">{{ guest.firstName }} {{ guest.lastName }}</span>
+          {{ guest.firstName }} {{ guest.lastName }}
           <template v-if="guest.customEmoji">
             <span :title="guest.customEmoji">{{ guest.customEmoji }}</span>
           </template>
@@ -284,15 +283,9 @@ function onDoubleClick() {
   z-index: 100;
   min-width: 160px;
 }
-.name-full {
-  display: none;
-}
 @media print {
-  .name-short, .unassign-btn {
+  .unassign-btn {
     display: none !important;
-  }
-  .name-full {
-    display: inline !important;
   }
   .seat-badge {
     border-style: solid !important;

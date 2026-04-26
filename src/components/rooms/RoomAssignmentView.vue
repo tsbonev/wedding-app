@@ -4,12 +4,14 @@ import { NGrid, NGi, NCard, NSpace, NTag, NText, NScrollbar, NButton, NIcon } fr
 import { UserPlus, Edit } from 'lucide-vue-next'
 import { useRoomStore } from '@/stores/useRoomStore'
 import { useGuestStore } from '@/stores/useGuestStore'
+import { useGroupStore } from '@/stores/useGroupStore'
 import { useI18nStore } from '@/stores/useI18nStore'
 import type { Room, Guest } from '@/types'
 import RoomGuestList from './RoomGuestList.vue'
 
 const roomStore = useRoomStore()
 const guestStore = useGuestStore()
+const groupStore = useGroupStore()
 const i18n = useI18nStore()
 
 const isOverRoomId = ref<string | null>(null)
@@ -44,6 +46,11 @@ function getGuest(id: string): Guest | undefined {
   return guestStore.getById(id)
 }
 
+function getGroupColor(guest: Guest | undefined) {
+  if (!guest?.groupId) return null
+  return groupStore.getById(guest.groupId)?.color ?? null
+}
+
 function formatRoomType(type: string) {
   if (!type) return ''
   return i18n.t(type.toLowerCase())
@@ -67,7 +74,7 @@ const emit = defineEmits<{
       <n-scrollbar>
         <div style="padding: 24px;">
           <n-grid :cols="3" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-            <n-gi v-for="room in roomStore.rooms" :key="room.id" span="3 m:1">
+            <n-gi v-for="room in roomStore.sortedRooms" :key="room.id" span="3 m:1">
               <div
                 class="room-drop-zone"
                 :class="{ 'is-over': isOverRoomId === room.id, 'is-full': room.guestIds.length >= room.capacity }"
@@ -98,7 +105,9 @@ const emit = defineEmits<{
                         v-for="gid in room.guestIds"
                         :key="gid"
                         class="assigned-guest-tag"
+                        :style="getGroupColor(getGuest(gid)) ? { borderLeftColor: getGroupColor(getGuest(gid))!, background: getGroupColor(getGuest(gid)) + '18' } : {}"
                       >
+                        <span v-if="getGroupColor(getGuest(gid))" class="group-dot" :style="{ background: getGroupColor(getGuest(gid))! }" />
                         <span class="guest-name">
                           {{ getGuest(gid)?.firstName }} {{ getGuest(gid)?.lastName }}
                         </span>
@@ -173,12 +182,21 @@ const emit = defineEmits<{
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 2px 8px;
   font-size: 12px;
 }
 
+.group-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
 .guest-name {
-  max-width: 120px;
+  max-width: 140px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

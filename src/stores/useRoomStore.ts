@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { Room } from '@/types'
 import { useGuestStore } from './useGuestStore'
@@ -6,6 +6,12 @@ import { useGuestStore } from './useGuestStore'
 export const useRoomStore = defineStore('rooms', () => {
   const rooms = ref<Room[]>([])
   const roomTypes = ref<string[]>(['suite', 'single', 'double'])
+
+  const sortedRooms = computed(() => {
+    return [...rooms.value].sort((a, b) => {
+      return a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: 'base' })
+    })
+  })
 
   const getById = (id: string) => rooms.value.find((r) => r.id === id)
 
@@ -75,5 +81,5 @@ export const useRoomStore = defineStore('rooms', () => {
     rooms.value = list
   }
 
-  return { rooms, roomTypes, getById, addRoom, addRoomType, removeRoomType, updateRoomType, updateRoom, deleteRoom, assignGuests, unassignGuest, bulkReplace }
+  return { rooms, sortedRooms, roomTypes, getById, addRoom, addRoomType, removeRoomType, updateRoomType, updateRoom, deleteRoom, assignGuests, unassignGuest, bulkReplace }
 }, { persist: true })
