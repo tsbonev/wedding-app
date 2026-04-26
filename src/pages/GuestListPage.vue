@@ -433,20 +433,19 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       </n-space>
     </n-space>
 
-    <n-space style="margin-bottom: 16px;" wrap align="center">
-      <n-input v-model:value="search" :placeholder="i18n.t('search_name')" clearable style="width: 200px" />
-      <n-select v-model:value="rsvpFilter" :options="rsvpFilterOptions" style="width: 130px" />
+    <div class="filter-bar">
+      <n-input v-model:value="search" :placeholder="i18n.t('search_name')" clearable />
+      <n-select v-model:value="rsvpFilter" :options="rsvpFilterOptions" />
       <n-select
         v-model:value="groupFilter"
         :options="groupFilterOptions"
         :render-label="renderGroupLabel"
         :render-label-single="renderGroupLabel"
         filterable
-        style="width: 250px"
       />
-      <n-select v-model:value="tableFilter" :options="tableFilterOptions" filterable style="width: 150px" />
-      <n-select v-model:value="roomFilter" :options="roomFilterOptions" filterable style="width: 150px" />
-      <n-select v-model:value="ageFilter" :options="ageFilterOptions" style="width: 250px" />
+      <n-select v-model:value="tableFilter" :options="tableFilterOptions" filterable />
+      <n-select v-model:value="roomFilter" :options="roomFilterOptions" filterable />
+      <n-select v-model:value="ageFilter" :options="ageFilterOptions" />
 
       <n-dropdown
         v-if="checkedRowKeys.length > 0"
@@ -458,7 +457,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
           {{ i18n.t('mass_edit') }} ({{ checkedRowKeys.length }})
         </n-button>
       </n-dropdown>
-    </n-space>
+    </div>
 
     <EmptyState
       v-if="guestStore.guests.length === 0"
@@ -474,6 +473,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       :data="filtered"
       :row-key="(row: Guest) => row.id"
       :pagination="pagination"
+      :scroll-x="900"
       striped
       :sort-config="{ unselectable: false }"
       @update:page="(p) => { pagination.page = p }"
@@ -494,6 +494,26 @@ const columns = computed<DataTableColumns<Guest>>(() => [
 </template>
 
 <style scoped>
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+.filter-bar :deep(.n-input),
+.filter-bar :deep(.n-select) {
+  flex: 1 1 140px;
+  min-width: 120px;
+  max-width: 260px;
+}
+@media (max-width: 767px) {
+  .filter-bar :deep(.n-input),
+  .filter-bar :deep(.n-select) {
+    max-width: 100%;
+  }
+}
+
 .editable-cell {
   cursor: pointer;
   width: 100%;

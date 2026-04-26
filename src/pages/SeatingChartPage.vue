@@ -578,10 +578,19 @@ async function handlePrint() {
 .toolbar-text {
   color: var(--text-subtle);
 }
+@media (max-width: 767px) {
+  .toolbar-section {
+    border-left: none;
+    padding-left: 0;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+  }
+}
 .canvas-viewport {
   flex: 1;
   position: relative;
-  height: 800px;
+  height: clamp(420px, 75vh, 800px);
   background: var(--bg-subtle);
   overflow: hidden;
   cursor: grab;

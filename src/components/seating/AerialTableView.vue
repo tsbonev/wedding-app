@@ -10,6 +10,9 @@ const props = defineProps<{ table: Table }>()
 const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
 const seatingStore = useSeatingStore()
 const configStore = useAppConfigStore()
+
+const seatedCount = computed(() => props.table.seats.filter(s => s.guestId).length)
+
 const isSelected = ref(false)
 const el = ref<HTMLElement | null>(null)
 
@@ -303,6 +306,7 @@ function setOrigin(corner: SeatOriginCorner) {
           </template>
           <div :style="{ transform: `rotate(${textRotation}deg)` }" class="text-container">
             <span class="tname">{{ table.name }}</span>
+            <span class="tdims">{{ seatedCount }} / {{ table.capacity }}</span>
           </div>
           <!-- Seat numbers for bottom row -->
           <div class="rect-numbers bottom">
@@ -354,6 +358,7 @@ function setOrigin(corner: SeatOriginCorner) {
           </template>
           <div :style="{ transform: `rotate(${textRotation}deg)` }" class="text-container">
             <span class="tname">{{ table.name }}</span>
+            <span class="tdims">{{ seatedCount }} / {{ table.capacity }}</span>
           </div>
           <span
             v-for="(seat, idx) in table.seats"
@@ -498,8 +503,9 @@ function setOrigin(corner: SeatOriginCorner) {
   line-height: 1.2;
 }
 .tdims {
-  font-size: 10px;
-  color: var(--text-subtle);
+  font-size: 11px;
+  color: var(--text-strong);
+  font-weight: 700;
   line-height: 1.2;
 }
 .round-num {

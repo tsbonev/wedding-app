@@ -97,6 +97,15 @@ function onDoubleClick(guestId: string) {
   display: flex;
   flex-direction: column;
 }
+@media (max-width: 767px) {
+  .room-guest-sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 220px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-soft);
+  }
+}
 
 .list-content {
   padding: 8px 12px 16px;

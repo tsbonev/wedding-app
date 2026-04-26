@@ -39,7 +39,7 @@ window.addEventListener('resize', () => { isMobile.value = window.innerWidth < 7
       </n-drawer-content>
     </n-drawer>
 
-    <n-layout-content content-style="padding: 24px; overflow-y: auto;">
+    <n-layout-content content-class="main-content">
       <n-button v-if="isMobile" quaternary @click="drawerOpen = true" style="margin-bottom:12px;" class="no-print">
         ☰ Menu
       </n-button>
@@ -49,6 +49,15 @@ window.addEventListener('resize', () => { isMobile.value = window.innerWidth < 7
 </template>
 
 <style scoped>
+:deep(.main-content) {
+  padding: 24px;
+  overflow-y: auto;
+}
+@media (max-width: 767px) {
+  :deep(.main-content) {
+    padding: 16px;
+  }
+}
 @media print {
   .n-layout-sider, 
   :deep(.n-layout-sider),

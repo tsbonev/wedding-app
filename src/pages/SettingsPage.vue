@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import {
-  NCard, NForm, NFormItem, NInput, NButton, NDivider, NText, NPopconfirm
+  NCard, NForm, NFormItem, NInput, NButton, NDivider, NText, NPopconfirm, NDatePicker
 } from 'naive-ui'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -42,6 +42,20 @@ function saveEdit(id: string) {
 function cancelEdit() {
   editingGroupId.value = null
 }
+
+// Wedding Info
+const weddingDateValue = computed({
+  get: () => {
+    if (!config.weddingDate) return null
+    const d = new Date(config.weddingDate)
+    if (isNaN(d.getTime())) return null
+    // Ensure we return yyyy-MM-dd format for the date picker
+    return d.toISOString().split('T')[0]
+  },
+  set: (val: string | null) => {
+    config.weddingDate = val
+  }
+})
 </script>
 
 <template>
@@ -55,7 +69,15 @@ function cancelEdit() {
           <n-input v-model:value="config.coupleName" :placeholder="i18n.t('placeholder_couple')" />
         </n-form-item>
         <n-form-item :label="i18n.t('wedding_date_format')">
-          <n-input v-model:value="config.weddingDate as string" :placeholder="i18n.t('placeholder_date')" />
+          <n-date-picker
+            v-model:formatted-value="weddingDateValue"
+            value-format="yyyy-MM-dd"
+            type="date"
+            style="width: 100%"
+            :placeholder="i18n.t('placeholder_date')"
+            clearable
+            update-value-on-close
+          />
         </n-form-item>
         <n-form-item :label="i18n.t('venue')">
           <n-input v-model:value="config.venue" :placeholder="i18n.t('venue')" />

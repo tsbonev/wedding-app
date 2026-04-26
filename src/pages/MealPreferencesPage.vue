@@ -25,13 +25,13 @@ const i18n = useI18nStore()
 
 // Meal management
 const newOptionLabel = ref('')
-const newOptionEmoji = ref('🍽️')
+const newOptionEmoji = ref('🍷')
 
 function addOption() {
   if (!newOptionLabel.value.trim()) return
   menuStore.addOption(newOptionLabel.value.trim(), newOptionEmoji.value)
   newOptionLabel.value = ''
-  newOptionEmoji.value = '🍽️'
+  newOptionEmoji.value = '🍷'
 }
 
 const editingMealId = ref<string | null>(null)
@@ -193,7 +193,7 @@ const columns = computed((): DataTableColumns<Guest> => [
 
     <EmptyState
       v-if="guestStore.guests.length === 0"
-      icon="🍽️"
+      icon="🍷"
       :title="i18n.t('no_guests_yet')"
       :description="i18n.t('add_guests_meal_instruction')"
     />
@@ -218,7 +218,7 @@ const columns = computed((): DataTableColumns<Guest> => [
                   <n-popover trigger="click" placement="bottom-start" :width="300" scrollable>
                     <template #trigger>
                       <n-button ghost style="padding: 0 8px">
-                        {{ editingMealEmoji || '🍽️' }}
+                        {{ editingMealEmoji || '🍷' }}
                       </n-button>
                     </template>
                     <EmojiPicker :native="true" @select="onEditEmojiSelect" />
@@ -245,7 +245,7 @@ const columns = computed((): DataTableColumns<Guest> => [
               <n-popover trigger="click" placement="bottom-end" :width="300" scrollable>
                 <template #trigger>
                   <n-button ghost style="padding: 0 8px">
-                    {{ newOptionEmoji || '🍽️' }}
+                    {{ newOptionEmoji || '🍷' }}
                   </n-button>
                 </template>
                 <EmojiPicker :native="true" @select="onEmojiSelect" />
@@ -275,12 +275,11 @@ const columns = computed((): DataTableColumns<Guest> => [
         </n-space>
       </n-card>
 
-      <n-space align="center">
+      <div class="filter-bar">
         <n-input
           v-model:value="nameFilter"
           :placeholder="i18n.t('search_guests')"
           clearable
-          style="width: 250px"
         />
         <n-select
           v-model:value="groupFilter"
@@ -289,7 +288,6 @@ const columns = computed((): DataTableColumns<Guest> => [
           :render-label="renderGroupLabel"
           :render-tag="renderGroupLabel"
           clearable
-          style="width: 250px"
         />
         <n-dropdown
           v-if="checkedRowKeys.length > 0"
@@ -301,7 +299,7 @@ const columns = computed((): DataTableColumns<Guest> => [
             {{ i18n.t('mass_edit') }} ({{ checkedRowKeys.length }})
           </n-button>
         </n-dropdown>
-      </n-space>
+      </div>
 
       <n-data-table
         :columns="columns"
@@ -309,6 +307,7 @@ const columns = computed((): DataTableColumns<Guest> => [
         v-model:checked-row-keys="checkedRowKeys"
         :row-key="(r: Guest) => r.id"
         :pagination="pagination"
+        :scroll-x="750"
         striped
         :sort-config="{ unselectable: false }"
         @update:page="(p) => { pagination.page = p }"
@@ -319,6 +318,25 @@ const columns = computed((): DataTableColumns<Guest> => [
 </template>
 
 <style scoped>
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.filter-bar :deep(.n-input),
+.filter-bar :deep(.n-select) {
+  flex: 1 1 180px;
+  min-width: 140px;
+  max-width: 280px;
+}
+@media (max-width: 767px) {
+  .filter-bar :deep(.n-input),
+  .filter-bar :deep(.n-select) {
+    max-width: 100%;
+  }
+}
+
 .meal-tag-wrapper {
   display: inline-block;
 }

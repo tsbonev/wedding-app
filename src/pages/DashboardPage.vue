@@ -1,34 +1,104 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NGrid, NGi, NStatistic, NCard, NProgress, NSpace, NText } from 'naive-ui'
+import { NGrid, NGi, NStatistic, NCard, NProgress, NSpace, NText, NTooltip } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useRoomStore } from '@/stores/useRoomStore'
+import { useGroupStore } from '@/stores/useGroupStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import { useI18nStore } from '@/stores/useI18nStore'
 
 const guests = useGuestStore()
 const seating = useSeatingStore()
 const rooms = useRoomStore()
+const groupStore = useGroupStore()
 const config = useAppConfigStore()
 const i18n = useI18nStore()
 
 const stats = computed(() => {
-  const total = guests.guests.length
-  const confirmed = guests.guests.filter((g) => g.rsvpStatus === 'confirmed').length
-  const declined = guests.guests.filter((g) => g.rsvpStatus === 'declined').length
-  const pending = total - confirmed - declined
-  const needsSeat = confirmed + pending
-
+  const activeGuests = guests.guests.filter(g => g.rsvpStatus !== 'declined')
+  const total = activeGuests.length
+  const confirmed = activeGuests.filter((g) => g.rsvpStatus === 'confirmed').length
+  const pending = total - confirmed
+  
   const totalSeats = seating.tables.reduce((s, t) => s + t.capacity, 0)
-  const assignedSeats = seating.tables.reduce((s, t) => s + t.seats.filter((seat) => seat.guestId).length, 0)
+  
+  // A guest is "seated" if they are assigned to a seat
+  const seatedInSeat = activeGuests.filter(g => g.tableId !== null)
+  const assignedSeats = seatedInSeat.length
+
+  // Children in adjoining seats (not taking up a formal seat)
+  const adjoiningChildren = activeGuests.filter(g => {
+    if (g.isChildrenSeatAdjoining && g.parentId) {
+      const parent = guests.getById(g.parentId)
+      return parent && parent.tableId !== null
+    }
+    return false
+  })
+  const adjoiningChildrenCount = adjoiningChildren.length
 
   const totalRoomCapacity = rooms.rooms.reduce((s, r) => s + r.capacity, 0)
-  const occupiedRoomSpots = rooms.rooms.reduce((s, r) => s + r.guestIds.length, 0)
+  const occupiedRoomSpots = rooms.rooms.reduce((s, r) => {
+    const activeInRoom = r.guestIds.filter(id => {
+      const g = guests.getById(id)
+      return g && g.rsvpStatus !== 'declined'
+    })
+    return s + activeInRoom.length
+  }, 0)
   const totalRooms = rooms.rooms.length
-  const emptyRooms = rooms.rooms.filter(r => r.guestIds.length === 0).length
+  const emptyRooms = rooms.rooms.filter(r => {
+    const activeInRoom = r.guestIds.filter(id => {
+      const g = guests.getById(id)
+      return g && g.rsvpStatus !== 'declined'
+    })
+    return activeInRoom.length === 0
+  }).length
+  const remainingRoomCapacity = totalRoomCapacity - occupiedRoomSpots
 
-  return { total, confirmed, declined, pending, needsSeat, totalSeats, assignedSeats, totalRoomCapacity, occupiedRoomSpots, totalRooms, emptyRooms }
+  const declined = guests.guests.filter((g) => g.rsvpStatus === 'declined').length
+
+  const groupBreakdown = groupStore.groups.map(group => {
+    const count = activeGuests.filter(g => g.groupId === group.id).length
+    return {
+      id: group.id,
+      name: group.name,
+      color: group.color,
+      count,
+      percentage: total > 0 ? (count / total) * 100 : 0
+    }
+  })
+
+  // Add "Other" group for guests without a group
+  const otherCount = activeGuests.filter(g => !g.groupId).length
+  if (otherCount > 0) {
+    groupBreakdown.push({
+      id: 'other',
+      name: i18n.t('other'),
+      color: '#94a3b8',
+      count: otherCount,
+      percentage: total > 0 ? (otherCount / total) * 100 : 0
+    })
+  }
+
+  // Sort by count descending
+  groupBreakdown.sort((a, b) => b.count - a.count)
+
+  // Ensure percentages sum to exactly 100 if there are guests
+  if (total > 0 && groupBreakdown.length > 0) {
+    const sum = groupBreakdown.reduce((s, g) => s + g.percentage, 0)
+    if (sum !== 100) {
+      // Add the difference to the largest group
+      // Since it's already sorted, it's the first one
+      groupBreakdown[0].percentage += (100 - sum)
+    }
+  }
+
+  return { 
+    total, confirmed, declined, pending, 
+    totalSeats, assignedSeats, adjoiningChildrenCount,
+    totalRoomCapacity, occupiedRoomSpots, totalRooms, emptyRooms, remainingRoomCapacity,
+    groupBreakdown
+  }
 })
 
 const daysUntil = computed(() => {
@@ -38,6 +108,17 @@ const daysUntil = computed(() => {
   return Math.ceil(diff / 86400000)
 })
 </script>
+<style scoped>
+.group-bar-segment {
+  height: 100%;
+  transition: transform 0.2s ease;
+  cursor: pointer;
+}
+.group-bar-segment:hover {
+  transform: scaleY(1.5);
+  z-index: 1;
+}
+</style>
 
 <template>
   <div>
@@ -52,38 +133,82 @@ const daysUntil = computed(() => {
       <n-grid :cols="2" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
         <n-gi span="2 m:1">
           <n-card :title="i18n.t('guests')">
-            <n-grid :cols="3" :x-gap="16">
-              <n-gi><n-statistic :label="i18n.t('total')" :value="stats.total" /></n-gi>
-              <n-gi><n-statistic :label="i18n.t('confirmed')" :value="stats.confirmed" /></n-gi>
-              <n-gi><n-statistic :label="i18n.t('pending')" :value="stats.pending" /></n-gi>
-            </n-grid>
+            <n-space vertical :size="16">
+              <n-statistic :label="i18n.t('total')" :value="stats.total" />
+              
+              <div v-if="stats.groupBreakdown.length > 0">
+                <n-text depth="3" style="font-size: 12px; display: block; margin-bottom: 8px;">{{ i18n.t('group_breakdown') }}</n-text>
+                <div style="display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 12px; align-items: stretch; isolate: isolate;">
+                  <n-tooltip 
+                    v-for="group in stats.groupBreakdown" 
+                    :key="group.id"
+                    trigger="hover"
+                    placement="top"
+                  >
+                    <template #trigger>
+                      <div 
+                        v-show="group.count > 0"
+                        class="group-bar-segment"
+                        :style="{ 
+                          flex: `0 0 ${group.percentage}%`, 
+                          backgroundColor: group.color
+                        }"
+                      />
+                    </template>
+                    {{ group.name }}: {{ group.count }}
+                  </n-tooltip>
+                </div>
+                <n-grid :cols="2" :x-gap="12" :y-gap="8">
+                  <n-gi v-for="group in stats.groupBreakdown" :key="group.id">
+                    <n-space :size="8" align="center" inline>
+                      <div :style="{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: group.color }" />
+                      <n-text depth="2" style="font-size: 13px;">{{ group.name }}: {{ group.count }}</n-text>
+                    </n-space>
+                  </n-gi>
+                </n-grid>
+              </div>
+            </n-space>
           </n-card>
         </n-gi>
         <n-gi span="2 m:1">
           <n-card :title="i18n.t('seating')">
             <n-space justify="space-between" align="center">
-              <n-statistic :label="i18n.t('assigned')" :value="`${stats.assignedSeats} / ${stats.needsSeat}`" />
+              <div>
+                <n-text depth="3" style="font-size: 12px; display: block; margin-bottom: 4px;">{{ i18n.t('assigned') }}</n-text>
+                <n-space :size="4" align="center">
+                  <span style="font-size: 24px;">{{ stats.assignedSeats }}</span>
+                  <n-tooltip v-if="stats.adjoiningChildrenCount > 0" trigger="hover">
+                    <template #trigger>
+                      <n-text depth="3" style="font-size: 18px; cursor: help;">({{ stats.adjoiningChildrenCount }})</n-text>
+                    </template>
+                    {{ i18n.t('child_adjoining_tooltip') }}
+                  </n-tooltip>
+                </n-space>
+              </div>
               <n-statistic :label="i18n.t('total_seats')" :value="stats.totalSeats" />
             </n-space>
             <n-progress
-              v-if="stats.needsSeat > 0"
+              v-if="stats.totalSeats > 0"
               type="line"
-              :percentage="Math.min(100, Math.round((stats.assignedSeats / stats.needsSeat) * 100))"
+              :percentage="Math.min(100, Math.round((stats.assignedSeats / stats.totalSeats) * 100))"
               style="margin-top: 12px"
             />
           </n-card>
         </n-gi>
         <n-gi span="2 m:1">
           <n-card :title="i18n.t('hotel_rooms')">
-            <n-grid :cols="2" :x-gap="16">
+            <n-grid :cols="3" :x-gap="16">
               <n-gi>
                 <n-statistic :label="i18n.t('total_rooms')" :value="stats.totalRooms" />
               </n-gi>
               <n-gi>
-                <n-statistic :label="i18n.t('empty_rooms')" :value="stats.emptyRooms" />
+                <n-statistic :label="i18n.t('max_capacity')" :value="stats.totalRoomCapacity" />
+              </n-gi>
+              <n-gi>
+                <n-statistic :label="i18n.t('remaining_capacity')" :value="stats.remainingRoomCapacity" />
               </n-gi>
             </n-grid>
-            <n-statistic :label="i18n.t('guests_accommodated')" :value="`${stats.occupiedRoomSpots} / ${stats.totalRoomCapacity}`" style="margin-top: 12px" />
+            <n-statistic :label="i18n.t('guests_accommodated')" :value="stats.occupiedRoomSpots" style="margin-top: 12px" />
             <n-progress
               v-if="stats.totalRoomCapacity > 0"
               type="line"

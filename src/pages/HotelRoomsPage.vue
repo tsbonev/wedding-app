@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { NGrid, NGi, NCard, NSpace, NButton, NTag, NPopconfirm, NText, NTabs, NTabPane } from 'naive-ui'
+import { ref, computed } from 'vue'
+import { NGrid, NGi, NCard, NSpace, NButton, NTag, NPopconfirm, NText, NTabs, NTabPane, NDatePicker, NForm, NFormItem } from 'naive-ui'
 import { useRoomStore } from '@/stores/useRoomStore'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -27,6 +27,20 @@ const assignRoom = ref<Room | undefined>(undefined)
 const showGuestModal = ref(false)
 const editingGuest = ref<Guest | undefined>(undefined)
 
+const globalCheckInValue = computed({
+  get: () => roomStore.globalCheckIn,
+  set: (val: string | null) => {
+    roomStore.updateGlobalTimes(val, roomStore.globalCheckOut)
+  }
+})
+
+const globalCheckOutValue = computed({
+  get: () => roomStore.globalCheckOut,
+  set: (val: string | null) => {
+    roomStore.updateGlobalTimes(roomStore.globalCheckIn, val)
+  }
+})
+
 function openAdd() { editingRoom.value = undefined; showRoomModal.value = true }
 function openEdit(r: Room) { editingRoom.value = r; showRoomModal.value = true }
 
@@ -36,6 +50,10 @@ function handleEditGuest(guestId: string) {
     editingGuest.value = guest
     showGuestModal.value = true
   }
+}
+
+function getActiveGuests(ids: string[]) {
+  return ids.map((id) => guestStore.getById(id)).filter((g) => g && g.rsvpStatus !== 'declined') as Guest[]
 }
 
 function getGuests(ids: string[]) {
@@ -49,7 +67,16 @@ function getGroupColor(guest: Guest) {
 
 function formatRoomType(type: string) {
   if (!type) return ''
-  return i18n.t(type.toLowerCase())
+  const translation = i18n.t(type.toLowerCase())
+  return translation === type.toLowerCase() ? type : translation
+}
+
+function getRoomCheckIn(room: Room) {
+  return room.isCustomTimes ? room.checkIn : roomStore.globalCheckIn
+}
+
+function getRoomCheckOut(room: Room) {
+  return room.isCustomTimes ? room.checkOut : roomStore.globalCheckOut
 }
 
 function handlePrint() {
@@ -79,6 +106,37 @@ function handlePrint() {
 
     <n-tabs v-model:value="activeTab" type="segment" animated style="margin-bottom: 24px;">
       <n-tab-pane name="list" :tab="i18n.t('list_view')" class="print-content">
+        <n-card v-if="roomStore.rooms.length > 0" size="small" style="margin-bottom: 16px;" class="no-print">
+          <n-form inline :show-feedback="false" label-placement="left">
+            <n-space wrap>
+      <n-form-item :label="i18n.t('global_check_in')">
+                <n-date-picker
+                  v-model:formatted-value="globalCheckInValue"
+                  value-format="yyyy-MM-dd HH:mm"
+                  type="datetime"
+                  clearable
+                  :placeholder="i18n.t('placeholder_datetime')"
+                  update-value-on-close
+                  :time-picker-props="{ format: 'HH:mm' }"
+                  :actions="['now', 'confirm']"
+                />
+              </n-form-item>
+              <n-form-item :label="i18n.t('global_check_out')">
+                <n-date-picker
+                  v-model:formatted-value="globalCheckOutValue"
+                  value-format="yyyy-MM-dd HH:mm"
+                  type="datetime"
+                  clearable
+                  :placeholder="i18n.t('placeholder_datetime')"
+                  update-value-on-close
+                  :time-picker-props="{ format: 'HH:mm' }"
+                  :actions="['now', 'confirm']"
+                />
+              </n-form-item>
+            </n-space>
+          </n-form>
+        </n-card>
+
         <EmptyState
           v-if="roomStore.rooms.length === 0"
           icon="🏨"
@@ -91,17 +149,17 @@ function handlePrint() {
             <n-card :title="`${i18n.t('room')} ${room.number}`" size="small">
               <template #header-extra>
                 <div class="no-print">
-                  <n-tag :type="room.guestIds.length >= room.capacity ? 'error' : 'success'" size="small">
-                    {{ room.guestIds.length }} / {{ room.capacity }}
+                  <n-tag :type="getActiveGuests(room.guestIds).length >= room.capacity ? 'error' : 'success'" size="small">
+                    {{ getActiveGuests(room.guestIds).length }} / {{ room.capacity }}
                   </n-tag>
                 </div>
               </template>
 
               <n-space vertical :size="4">
                 <n-text depth="3" style="font-size: 12px;">{{ formatRoomType(room.type) }}</n-text>
-                <div v-if="room.checkIn || room.checkOut">
+                <div v-if="getRoomCheckIn(room) || getRoomCheckOut(room)">
                   <n-text depth="3" style="font-size: 11px;">
-                    {{ room.checkIn }} → {{ room.checkOut }}
+                    {{ getRoomCheckIn(room) }} → {{ getRoomCheckOut(room) }}
                   </n-text>
                 </div>
                 <div>

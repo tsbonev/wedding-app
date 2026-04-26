@@ -43,6 +43,10 @@ function unassign(guestId: string) {
   roomStore.unassignGuest(guestId)
 }
 
+function getActiveGuests(ids: string[]) {
+  return ids.map((id) => guestStore.getById(id)).filter((g) => g && g.rsvpStatus !== 'declined') as Guest[]
+}
+
 function getGuest(id: string): Guest | undefined {
   return guestStore.getById(id)
 }
@@ -53,7 +57,16 @@ function guestGroupColor(guest: Guest | undefined) {
 
 function formatRoomType(type: string) {
   if (!type) return ''
-  return i18n.t(type.toLowerCase())
+  const translation = i18n.t(type.toLowerCase())
+  return translation === type.toLowerCase() ? type : translation
+}
+
+function getRoomCheckIn(room: Room) {
+  return room.isCustomTimes ? room.checkIn : roomStore.globalCheckIn
+}
+
+function getRoomCheckOut(room: Room) {
+  return room.isCustomTimes ? room.checkOut : roomStore.globalCheckOut
 }
 
 const emit = defineEmits<{ 
@@ -77,7 +90,7 @@ const emit = defineEmits<{
             <n-gi v-for="room in roomStore.sortedRooms" :key="room.id" span="3 m:1">
               <div
                 class="room-drop-zone"
-                :class="{ 'is-over': isOverRoomId === room.id, 'is-full': room.guestIds.length >= room.capacity }"
+                :class="{ 'is-over': isOverRoomId === room.id, 'is-full': getActiveGuests(room.guestIds).length >= room.capacity }"
                 @dragover="onDragOver($event, room.id)"
                 @dragleave="onDragLeave"
                 @drop="onDrop($event, room)"
@@ -91,14 +104,19 @@ const emit = defineEmits<{
                       <n-button quaternary circle size="tiny" @click="emit('edit-room', room)">
                         <template #icon><n-icon :component="Edit" /></template>
                       </n-button>
-                      <n-tag :type="room.guestIds.length >= room.capacity ? 'error' : 'success'" size="small">
-                        {{ room.guestIds.length }} / {{ room.capacity }}
+                      <n-tag :type="getActiveGuests(room.guestIds).length >= room.capacity ? 'error' : 'success'" size="small">
+                        {{ getActiveGuests(room.guestIds).length }} / {{ room.capacity }}
                       </n-tag>
                     </n-space>
                   </template>
 
                   <n-space vertical size="small">
                     <n-text depth="3" style="font-size: 12px;">{{ formatRoomType(room.type) }}</n-text>
+                    <div v-if="getRoomCheckIn(room) || getRoomCheckOut(room)">
+                      <n-text depth="3" style="font-size: 11px;">
+                        {{ getRoomCheckIn(room) }} → {{ getRoomCheckOut(room) }}
+                      </n-text>
+                    </div>
                     
                     <div class="assigned-guests-list">
                       <div
@@ -136,6 +154,15 @@ const emit = defineEmits<{
   border: 1px solid var(--border-soft);
   border-radius: 8px;
   overflow: hidden;
+}
+@media (max-width: 767px) {
+  .room-assignment-container {
+    flex-direction: column;
+    height: auto;
+  }
+  .assignment-canvas {
+    min-height: 400px;
+  }
 }
 
 .assignment-canvas {

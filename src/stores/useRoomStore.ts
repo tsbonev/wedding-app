@@ -6,6 +6,8 @@ import { useGuestStore } from './useGuestStore'
 export const useRoomStore = defineStore('rooms', () => {
   const rooms = ref<Room[]>([])
   const roomTypes = ref<string[]>(['suite', 'single', 'double'])
+  const globalCheckIn = ref<string | null>(null)
+  const globalCheckOut = ref<string | null>(null)
 
   const sortedRooms = computed(() => {
     return [...rooms.value].sort((a, b) => {
@@ -26,8 +28,16 @@ export const useRoomStore = defineStore('rooms', () => {
   }
 
   function removeRoomType(type: string) {
+    const defaultTypes = ['suite', 'single', 'double']
+    const isDefault = defaultTypes.includes(type)
+    const customTypes = roomTypes.value.filter(t => !defaultTypes.includes(t))
+
+    // Default types can only be deleted if there's at least one custom type
+    if (isDefault && customTypes.length === 0) {
+      return
+    }
+
     roomTypes.value = roomTypes.value.filter(t => t !== type)
-    // Optional: could also update rooms that use this type to 'unassigned' or similar
   }
 
   function updateRoomType(oldType: string, newType: string) {
@@ -81,5 +91,12 @@ export const useRoomStore = defineStore('rooms', () => {
     rooms.value = list
   }
 
-  return { rooms, sortedRooms, roomTypes, getById, addRoom, addRoomType, removeRoomType, updateRoomType, updateRoom, deleteRoom, assignGuests, unassignGuest, bulkReplace }
+  function updateGlobalTimes(checkIn: string | null, checkOut: string | null) {
+    globalCheckIn.value = checkIn
+    globalCheckOut.value = checkOut
+    // Trigger persistence by updating a top-level ref
+    rooms.value = [...rooms.value]
+  }
+
+  return { rooms, sortedRooms, roomTypes, globalCheckIn, globalCheckOut, getById, addRoom, addRoomType, removeRoomType, updateRoomType, updateRoom, deleteRoom, assignGuests, unassignGuest, bulkReplace, updateGlobalTimes }
 }, { persist: true })

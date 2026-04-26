@@ -61,6 +61,7 @@ export interface Room {
   guestIds: string[]
   checkIn: string | null
   checkOut: string | null
+  isCustomTimes?: boolean
   notes: string
 }
 

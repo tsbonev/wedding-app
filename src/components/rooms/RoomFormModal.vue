@@ -22,7 +22,7 @@ function handleSubmit(data: Omit<Room, 'id' | 'guestIds'>) {
   <n-modal :show="show" :mask-closable="false">
     <n-card
       :title="room ? i18n.t('edit_room') : i18n.t('add_room')"
-      style="max-width: 480px; width: 95vw;"
+      style="max-width: 540px; width: 95vw;"
       closable
       @close="emit('close')"
     >
