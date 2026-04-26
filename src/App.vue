@@ -40,11 +40,7 @@ watch(
   },
   { immediate: true }
 )
-const naiveDateLocale = computed(() => {
-  // Naive UI doesn't seem to have a bgBG date locale out of the box in some versions,
-  // but let's check what's available. Usually it's dateEnUS.
-  return null // Use default for now, or we could import dateEnUS
-})
+const naiveDateLocale = computed(() => null)
 </script>
 
 <template>
