@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { computed, h, reactive, ref } from 'vue'
 import {
   NSpace, NCard, NProgress, NText, NDataTable, NSelect,
   NTag, NPopover, NInput, NButton, NDivider, NInputGroup,
@@ -116,6 +116,8 @@ const mealCounts = computed(() => {
 })
 
 const { massEditOptions, renderMassEditLabel, handleMassEdit } = useMassEdit(checkedRowKeys)
+
+const pagination = reactive({ pageSize: 20, page: 1 })
 
 const columns = computed((): DataTableColumns<Guest> => [
   {
@@ -306,9 +308,11 @@ const columns = computed((): DataTableColumns<Guest> => [
         :data="filteredGuests"
         v-model:checked-row-keys="checkedRowKeys"
         :row-key="(r: Guest) => r.id"
-        :pagination="{ pageSize: 20 }"
+        :pagination="pagination"
         striped
         :sort-config="{ unselectable: false }"
+        @update:page="(p) => { pagination.page = p }"
+        @update:sorter="() => { pagination.page = 1 }"
       />
     </n-space>
   </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, h } from 'vue'
+import { ref, computed, h, reactive } from 'vue'
 import {
   NButton, NSpace, NInput, NSelect, NDataTable, NTag, NPopconfirm, NText,
   NDropdown, NTooltip
@@ -223,6 +223,8 @@ function openEdit(guest: Guest) {
 // ── Mass edit ─────────────────────────────────────────────────────────────────
 
 const { massEditOptions, renderMassEditLabel, handleMassEdit } = useMassEdit(checkedRowKeys)
+
+const pagination = reactive({ pageSize: 20, page: 1 })
 
 // ── Columns ───────────────────────────────────────────────────────────────────
 
@@ -471,9 +473,11 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       :columns="columns"
       :data="filtered"
       :row-key="(row: Guest) => row.id"
-      :pagination="{ pageSize: 20 }"
+      :pagination="pagination"
       striped
       :sort-config="{ unselectable: false }"
+      @update:page="(p) => { pagination.page = p }"
+      @update:sorter="() => { pagination.page = 1 }"
     />
 
     <GuestFormModal
