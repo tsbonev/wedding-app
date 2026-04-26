@@ -53,7 +53,7 @@ const groupFilterOptions = computed<(SelectOption & { color?: string })[]>(() =>
 const roomFilterOptions = computed(() => [
   { label: i18n.t('all_rooms'), value: '' },
   { label: i18n.t('no_room'), value: 'none' },
-  ...roomStore.rooms.map((r) => ({ label: `${r.number} (${r.type})`, value: r.id })),
+  ...roomStore.rooms.map((r) => ({ label: `${r.number}`, value: r.id })),
 ])
 
 const tableFilterOptions = computed(() => [
@@ -208,6 +208,12 @@ function getPartnerLabel(id: string | null) {
   return g ? `${i18n.t('partner_of')} ${g.firstName} ${g.lastName}` : null
 }
 
+function getParentLabel(id: string | null) {
+  if (!id) return null
+  const g = guestStore.getById(id)
+  return g ? `${i18n.t('child_of')} ${g.firstName} ${g.lastName}` : null
+}
+
 function getTableName(id: string | null) {
   if (!id) return '—'
   const t = seatingStore.getById(id)
@@ -340,6 +346,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       }
 
       const partnerLabel = getPartnerLabel(row.partnerId)
+      const parentLabel = getParentLabel(row.parentId)
       return h('div', { class: 'editable-cell', onClick: () => startNameEdit(row) }, [
         h('div', { style: 'display:flex;align-items:center;gap:6px' }, [
           h('span', `${row.firstName} ${row.lastName}`),
@@ -350,6 +357,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
           ],
         ]),
         partnerLabel ? h(NText, { depth: 3, style: 'font-size:11px;margin-top:1px' }, { default: () => partnerLabel }) : null,
+        parentLabel ? h(NText, { depth: 3, style: 'font-size:11px;margin-top:1px' }, { default: () => parentLabel }) : null,
       ])
     },
     sorter: (a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
