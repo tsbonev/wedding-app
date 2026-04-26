@@ -19,6 +19,7 @@ const configStore = useAppConfigStore()
 const menuOptions = computed((): MenuOption[] => [
   { label: i18n.t('dashboard'), key: '/dashboard', icon: () => h('span', '📊') },
   { label: i18n.t('guests'), key: '/guests', icon: () => h('span', '📋') },
+  { label: i18n.t('programme'), key: '/programme', icon: () => h('span', '📅') },
   { label: i18n.t('meals'), key: '/meals', icon: () => h('span', '🥂') },
   { label: i18n.t('seating'), key: '/seating', icon: () => h('span', '🪑') },
   { label: i18n.t('rooms'), key: '/rooms', icon: () => h('span', '🛌') },

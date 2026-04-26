@@ -71,6 +71,13 @@ export interface MenuItem {
   emoji: string
 }
 
+export interface ProgrammeEvent {
+  id: string
+  time: string // HH:mm
+  name: string
+  description: string
+}
+
 export interface AppConfig {
   coupleName: string
   weddingDate: string | null
@@ -87,4 +94,5 @@ export interface WeddingSnapshot {
   rooms: Room[]
   menuOptions: MenuItem[]
   groups: GuestGroup[]
+  programme: ProgrammeEvent[]
 }

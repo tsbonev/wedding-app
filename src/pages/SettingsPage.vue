@@ -47,13 +47,10 @@ function cancelEdit() {
 const weddingDateValue = computed({
   get: () => {
     if (!config.weddingDate) return null
-    const d = new Date(config.weddingDate)
-    if (isNaN(d.getTime())) return null
-    // Ensure we return yyyy-MM-dd format for the date picker
-    return d.toISOString().split('T')[0]
+    return new Date(config.weddingDate).getTime()
   },
-  set: (val: string | null) => {
-    config.weddingDate = val
+  set: (val: number | null) => {
+    config.weddingDate = val ? new Date(val).toISOString() : null
   }
 })
 </script>
@@ -70,9 +67,8 @@ const weddingDateValue = computed({
         </n-form-item>
         <n-form-item :label="i18n.t('wedding_date_format')">
           <n-date-picker
-            v-model:formatted-value="weddingDateValue"
-            value-format="yyyy-MM-dd"
-            type="date"
+            v-model:value="weddingDateValue"
+            type="datetime"
             style="width: 100%"
             :placeholder="i18n.t('placeholder_date')"
             update-value-on-close

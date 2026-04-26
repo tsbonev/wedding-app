@@ -21,6 +21,7 @@ watchEffect(() => {
 
 const routeTitleMap: Record<string, string> = {
   '/dashboard': 'dashboard',
+  '/programme': 'programme',
   '/guests': 'guests',
   '/seating': 'seating',
   '/meals': 'meals',
