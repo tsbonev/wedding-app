@@ -105,12 +105,9 @@ const filtered = computed(() => {
 
 // ── Inline editing ────────────────────────────────────────────────────────────
 
-type EditField = 'name' | 'group' | 'rsvp' | 'meal'
+type EditField = 'group' | 'rsvp' | 'meal'
 const editingCell = ref<{ id: string; field: EditField } | null>(null)
 const selectOpen = ref(false)
-
-const editFirst = ref('')
-const editLast = ref('')
 
 function isEditing(id: string, field: EditField) {
   return editingCell.value?.id === id && editingCell.value?.field === field
@@ -123,22 +120,6 @@ function startSelectEdit(id: string, field: EditField) {
 
 function closeSelect() {
   selectOpen.value = false
-  editingCell.value = null
-}
-
-function startNameEdit(row: Guest) {
-  editFirst.value = row.firstName
-  editLast.value = row.lastName
-  editingCell.value = { id: row.id, field: 'name' }
-}
-
-function saveName(id: string) {
-  if (editFirst.value.trim()) {
-    guestStore.updateGuest(id, {
-      firstName: editFirst.value.trim(),
-      lastName: editLast.value.trim(),
-    })
-  }
   editingCell.value = null
 }
 
@@ -211,6 +192,25 @@ function getRoomName(id: string | null) {
   return r ? `🏨 ${i18n.t('room')} ${r.number}` : '—'
 }
 
+function renderNotes(row: Guest) {
+  const hasNotes = row.notes && row.notes.trim()
+  const hasDietary = row.dietaryNotes && row.dietaryNotes.trim()
+  if (!hasNotes && !hasDietary) return null
+
+  return h('div', { 
+    style: 'margin-top: 4px; padding: 4px 8px; background: rgba(0,0,0,0.03); border-radius: 4px; font-size: 11px; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px;' 
+  }, [
+    hasNotes ? h('div', [
+      h('strong', { style: 'margin-right: 4px' }, i18n.t('notes') + ':'),
+      h('span', row.notes)
+    ]) : null,
+    hasDietary ? h('div', [
+      h('strong', { style: 'margin-right: 4px' }, i18n.t('dietary_notes') + ':'),
+      h('span', row.dietaryNotes)
+    ]) : null
+  ])
+}
+
 function openAdd() {
   editingGuest.value = undefined
   showModal.value = true
@@ -238,39 +238,9 @@ const columns = computed<DataTableColumns<Guest>>(() => [
     key: 'name',
     width: '20%',
     render: (row) => {
-      if (isEditing(row.id, 'name')) {
-        return h('div', { style: 'display:flex;gap:4px;align-items:center;width:100%' }, [
-          h(NInput, {
-            value: editFirst.value,
-            size: 'small',
-            placeholder: i18n.t('first'),
-            style: 'flex:1;min-width:0',
-            onVnodeMounted: (vnode) => (vnode.el as HTMLElement)?.querySelector('input')?.focus(),
-            'onUpdate:value': (v: string) => { editFirst.value = v },
-            onKeydown: (e: KeyboardEvent) => {
-              if (e.key === 'Enter') saveName(row.id)
-              if (e.key === 'Escape') cancelEdit()
-            },
-          }),
-          h(NInput, {
-            value: editLast.value,
-            size: 'small',
-            placeholder: i18n.t('last'),
-            style: 'flex:1;min-width:0',
-            'onUpdate:value': (v: string) => { editLast.value = v },
-            onKeydown: (e: KeyboardEvent) => {
-              if (e.key === 'Enter') saveName(row.id)
-              if (e.key === 'Escape') cancelEdit()
-            },
-          }),
-          h(NButton, { size: 'tiny', type: 'primary', onClick: () => saveName(row.id) }, { default: () => '✓' }),
-          h(NButton, { size: 'tiny', onClick: cancelEdit }, { default: () => '✗' }),
-        ])
-      }
-
       const partnerLabel = getPartnerLabel(row.partnerId)
       const parentLabel = getParentLabel(row.parentId)
-      return h('div', { class: 'editable-cell', onClick: () => startNameEdit(row) }, [
+      return h('div', { class: 'name-cell' }, [
         h('div', { style: 'display:flex;align-items:center;gap:6px' }, [
           h('span', `${row.firstName} ${row.lastName}`),
           row.customEmoji ? h('span', { title: i18n.t('custom_emoji') }, row.customEmoji) : [
@@ -281,6 +251,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
         ]),
         partnerLabel ? h(NText, { depth: 3, style: 'font-size:11px;margin-top:1px' }, { default: () => partnerLabel }) : null,
         parentLabel ? h(NText, { depth: 3, style: 'font-size:11px;margin-top:1px' }, { default: () => parentLabel }) : null,
+        renderNotes(row),
       ])
     },
     sorter: (a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
@@ -300,6 +271,21 @@ const columns = computed<DataTableColumns<Guest>>(() => [
           size: 'small',
           show: selectOpen.value,
           style: 'width:100%',
+          onVnodeMounted: (vnode) => {
+            const el = vnode.el as HTMLElement
+            const input = el?.querySelector('input')
+            if (input) {
+              input.focus()
+            } else {
+              el?.focus()
+            }
+          },
+          onKeydown: (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation()
+              cancelEdit()
+            }
+          },
           'onUpdate:value': (val: string) => {
             guestStore.updateGuest(row.id, { groupId: val || null })
             closeSelect()
@@ -336,9 +322,25 @@ const columns = computed<DataTableColumns<Guest>>(() => [
         return h(NSelect, {
           value: row.rsvpStatus,
           options: rsvpCellOptions.value,
+          filterable: true,
           size: 'small',
           show: selectOpen.value,
           style: 'width:100%',
+          onVnodeMounted: (vnode) => {
+            const el = vnode.el as HTMLElement
+            const input = el?.querySelector('input')
+            if (input) {
+              input.focus()
+            } else {
+              el?.focus()
+            }
+          },
+          onKeydown: (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation()
+              cancelEdit()
+            }
+          },
           'onUpdate:value': (val: string) => {
             guestStore.updateGuest(row.id, { rsvpStatus: val as RSVPStatus })
             closeSelect()
@@ -366,9 +368,25 @@ const columns = computed<DataTableColumns<Guest>>(() => [
         return h(NSelect, {
           value: row.mealChoiceId ?? '',
           options: mealCellOptions.value,
+          filterable: true,
           size: 'small',
           show: selectOpen.value,
           style: 'width:100%',
+          onVnodeMounted: (vnode) => {
+            const el = vnode.el as HTMLElement
+            const input = el?.querySelector('input')
+            if (input) {
+              input.focus()
+            } else {
+              el?.focus()
+            }
+          },
+          onKeydown: (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation()
+              cancelEdit()
+            }
+          },
           'onUpdate:value': (val: string) => {
             guestStore.updateGuest(row.id, { mealChoiceId: val || null })
             closeSelect()

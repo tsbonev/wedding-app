@@ -75,7 +75,6 @@ const weddingDateValue = computed({
             type="date"
             style="width: 100%"
             :placeholder="i18n.t('placeholder_date')"
-            clearable
             update-value-on-close
           />
         </n-form-item>

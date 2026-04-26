@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { NForm, NFormItem, NInput, NInputNumber, NSpace, NButton, NSelect, NDatePicker, NCheckbox, NTag, NPopover, NCollapseTransition } from 'naive-ui'
+import { NForm, NFormItem, NInput, NInputNumber, NSpace, NButton, NSelect, NCheckbox, NTag, NPopover, NCollapseTransition } from 'naive-ui'
+import BetterDateTimePicker from '@/components/shared/BetterDateTimePicker.vue'
 import type { Room } from '@/types'
 import { useRoomStore } from '@/stores/useRoomStore'
 import { useI18nStore } from '@/stores/useI18nStore'
@@ -170,29 +171,15 @@ function handleSubmit() {
         <n-collapse-transition :show="form.isCustomTimes">
           <n-space>
             <n-form-item :label="i18n.t('check_in')" style="flex: 1" :show-feedback="false">
-              <n-date-picker
-                v-model:formatted-value="form.checkIn"
-                value-format="yyyy-MM-dd HH:mm"
-                type="datetime"
-                style="width: 100%"
-                :placeholder="i18n.t('placeholder_datetime')"
-                clearable
-                update-value-on-close
-                :time-picker-props="{ format: 'HH:mm' }"
-                :actions="['now', 'confirm']"
+              <BetterDateTimePicker
+                v-model:value="form.checkIn"
+                :placeholder="i18n.t('placeholder_date')"
               />
             </n-form-item>
             <n-form-item :label="i18n.t('check_out')" style="flex: 1" :show-feedback="false">
-              <n-date-picker
-                v-model:formatted-value="form.checkOut"
-                value-format="yyyy-MM-dd HH:mm"
-                type="datetime"
-                style="width: 100%"
-                :placeholder="i18n.t('placeholder_datetime')"
-                clearable
-                update-value-on-close
-                :time-picker-props="{ format: 'HH:mm' }"
-                :actions="['now', 'confirm']"
+              <BetterDateTimePicker
+                v-model:value="form.checkOut"
+                :placeholder="i18n.t('placeholder_date')"
               />
             </n-form-item>
           </n-space>

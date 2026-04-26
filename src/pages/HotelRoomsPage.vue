@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { NGrid, NGi, NCard, NSpace, NButton, NTag, NPopconfirm, NText, NTabs, NTabPane, NDatePicker, NForm, NFormItem } from 'naive-ui'
+import { NGrid, NGi, NCard, NSpace, NButton, NTag, NPopconfirm, NText, NTabs, NTabPane, NForm, NFormItem } from 'naive-ui'
 import { useRoomStore } from '@/stores/useRoomStore'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -12,6 +12,7 @@ import RoomGuestAssignModal from '@/components/rooms/RoomGuestAssignModal.vue'
 import RoomAssignmentView from '@/components/rooms/RoomAssignmentView.vue'
 import GuestFormModal from '@/components/guest/GuestFormModal.vue'
 import EmptyState from '@/components/shared/EmptyState.vue'
+import BetterDateTimePicker from '@/components/shared/BetterDateTimePicker.vue'
 
 const roomStore = useRoomStore()
 const guestStore = useGuestStore()
@@ -110,27 +111,15 @@ function handlePrint() {
           <n-form inline :show-feedback="false" label-placement="left">
             <n-space wrap>
       <n-form-item :label="i18n.t('global_check_in')">
-                <n-date-picker
-                  v-model:formatted-value="globalCheckInValue"
-                  value-format="yyyy-MM-dd HH:mm"
-                  type="datetime"
-                  clearable
-                  :placeholder="i18n.t('placeholder_datetime')"
-                  update-value-on-close
-                  :time-picker-props="{ format: 'HH:mm' }"
-                  :actions="['now', 'confirm']"
+                <BetterDateTimePicker
+                  v-model:value="globalCheckInValue"
+                  :placeholder="i18n.t('placeholder_date')"
                 />
               </n-form-item>
               <n-form-item :label="i18n.t('global_check_out')">
-                <n-date-picker
-                  v-model:formatted-value="globalCheckOutValue"
-                  value-format="yyyy-MM-dd HH:mm"
-                  type="datetime"
-                  clearable
-                  :placeholder="i18n.t('placeholder_datetime')"
-                  update-value-on-close
-                  :time-picker-props="{ format: 'HH:mm' }"
-                  :actions="['now', 'confirm']"
+                <BetterDateTimePicker
+                  v-model:value="globalCheckOutValue"
+                  :placeholder="i18n.t('placeholder_date')"
                 />
               </n-form-item>
             </n-space>
