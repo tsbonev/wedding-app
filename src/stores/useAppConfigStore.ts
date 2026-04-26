@@ -25,6 +25,7 @@ export const useAppConfigStore = defineStore('config', () => {
   const panX = ref(0)
   const panY = ref(0)
   const isDarkMode = ref(false)
+  const isExporting = ref(false)
 
   function fitCanvasToTables(tables: Table[]) {
     if (tables.length === 0) {
@@ -91,6 +92,7 @@ export const useAppConfigStore = defineStore('config', () => {
     panX,
     panY,
     isDarkMode,
+    isExporting,
     fitCanvasToTables
   }
 }, { persist: true })

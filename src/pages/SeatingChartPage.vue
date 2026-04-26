@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { NButton, NTabs, NTabPane, NRadioGroup, NRadioButton, NSwitch, NButtonGroup, useMessage } from 'naive-ui'
+import { NButton, NTabs, NTabPane, NRadioGroup, NRadioButton, NSwitch, NButtonGroup, useMessage, NConfigProvider } from 'naive-ui'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import { useSeatingStore } from '@/stores/useSeatingStore'
@@ -160,6 +160,9 @@ async function handlePrint() {
       const originalPanX = configStore.panX
       const originalPanY = configStore.panY
       
+      // Use isExporting to switch theme for capture without global toggle
+      configStore.isExporting = true
+      
       // Fit to content first to find the bounds
       configStore.fitCanvasToTables(seatingStore.tables)
       
@@ -178,7 +181,15 @@ async function handlePrint() {
         scale: 2, // Higher scale for better PDF quality
         logging: false,
         useCORS: true,
-        allowTaint: true
+        allowTaint: true,
+        onclone: (clonedDoc) => {
+          const clonedCanvas = clonedDoc.querySelector('.seating-canvas') as HTMLElement
+          if (clonedCanvas) {
+            clonedCanvas.style.transform = 'none'
+            clonedCanvas.style.position = 'relative'
+            clonedCanvas.style.display = 'block'
+          }
+        }
       })
 
       // 3. Create PDF
@@ -210,6 +221,7 @@ async function handlePrint() {
       configStore.zoomLevel = originalZoom
       configStore.panX = originalPanX
       configStore.panY = originalPanY
+      configStore.isExporting = false
       
       msg.destroy()
       message.success(i18n.t('export_success') || 'Export successful!')
@@ -226,7 +238,7 @@ async function handlePrint() {
 
 <template>
   <div @mousemove="onMouseMove" @dragover="onMouseMove">
-    <h2 style="margin-top: 10px;">{{ i18n.t('seating') }}</h2>
+    <h2 class="no-print" style="margin-top: 10px;">{{ i18n.t('seating') }}</h2>
       <!-- Print-only header -->
       <div class="print-header">
         <h1 v-if="configStore.coupleName">{{ configStore.coupleName }}</h1>
@@ -351,54 +363,59 @@ async function handlePrint() {
             </div>
           </div>
           <div style="position: relative; overflow: hidden; border-radius: 8px;">
-            <div 
-              ref="viewportEl"
-              class="canvas-viewport"
-              @mousedown="onCanvasMouseDown"
-              @wheel="onCanvasWheel"
-            >
+            <n-config-provider :theme="configStore.isExporting ? null : undefined" abstract>
               <div 
-                class="seating-canvas" 
-                :class="{ 'is-printing-floorplan': configStore.seatingActiveTab === 'floorplan' }"
-                :style="{ 
-                  width: configStore.canvasWidth + 'px',
-                  height: configStore.canvasHeight + 'px',
-                  transform: `translate(${configStore.panX}px, ${configStore.panY}px) scale(${configStore.zoomLevel})`,
-                  transformOrigin: '0 0'
-                }"
+                ref="viewportEl"
+                class="canvas-viewport"
+                @mousedown="onCanvasMouseDown"
+                @wheel="onCanvasWheel"
               >
-                <EmptyState
-                  v-if="seatingStore.tables.length === 0"
-                  icon="🪑" :title="i18n.t('no_tables_yet')"
-                  :description="i18n.t('floor_plan_instruction')"
-                />
-                <RelationArcs />
-                <AerialTableView
-                  v-for="table in seatingStore.tables" :key="table.id"
-                  :table="table"
-                  @edit-guest="handleEditGuest"
-                />
-              </div>
+                <div 
+                  class="seating-canvas" 
+                  :class="{ 
+                    'is-printing-floorplan': configStore.seatingActiveTab === 'floorplan',
+                    'is-exporting': configStore.isExporting
+                  }"
+                  :style="{ 
+                    width: configStore.canvasWidth + 'px',
+                    height: configStore.canvasHeight + 'px',
+                    transform: `translate(${configStore.panX}px, ${configStore.panY}px) scale(${configStore.zoomLevel})`,
+                    transformOrigin: '0 0'
+                  }"
+                >
+                  <EmptyState
+                    v-if="seatingStore.tables.length === 0"
+                    icon="🪑" :title="i18n.t('no_tables_yet')"
+                    :description="i18n.t('floor_plan_instruction')"
+                  />
+                  <RelationArcs />
+                  <AerialTableView
+                    v-for="table in seatingStore.tables" :key="table.id"
+                    :table="table"
+                    @edit-guest="handleEditGuest"
+                  />
+                </div>
 
-              <!-- Canvas Controls -->
-              <div class="canvas-controls top-left">
-                <n-button-group vertical size="small">
-                  <n-button @click="zoomIn">
-                    <template #icon>➕</template>
-                  </n-button>
-                  <n-button @click="zoomOut">
-                    <template #icon>➖</template>
-                  </n-button>
-                </n-button-group>
-                <div class="zoom-indicator">{{ Math.round(configStore.zoomLevel * 100) }}%</div>
-              </div>
+                <!-- Canvas Controls -->
+                <div class="canvas-controls top-left">
+                  <n-button-group vertical size="small">
+                    <n-button @click="zoomIn">
+                      <template #icon>➕</template>
+                    </n-button>
+                    <n-button @click="zoomOut">
+                      <template #icon>➖</template>
+                    </n-button>
+                  </n-button-group>
+                  <div class="zoom-indicator">{{ Math.round(configStore.zoomLevel * 100) }}%</div>
+                </div>
 
-              <div class="canvas-controls top-center">
-                <n-button size="small" @click="centerCanvas">
-                  {{ i18n.t('center_canvas') }}
-                </n-button>
+                <div class="canvas-controls top-center">
+                  <n-button size="small" @click="centerCanvas">
+                    {{ i18n.t('center_canvas') }}
+                  </n-button>
+                </div>
               </div>
-            </div>
+            </n-config-provider>
             <UnassignedGuestList :guests="unassigned" @edit-guest="handleEditGuest" />
           </div>
         </div>
@@ -498,7 +515,6 @@ async function handlePrint() {
     -webkit-print-color-adjust: exact;
   }
 
-  /* Floor Plan specific print styles */
   .is-printing-floorplan {
     transform: none !important;
     position: relative !important;
@@ -579,6 +595,33 @@ async function handlePrint() {
   background: var(--bg-muted);
   border: 1px solid var(--border-color);
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+.seating-canvas.is-exporting {
+  background: white !important;
+  color: #334155 !important;
+  --bg-surface: #ffffff;
+  --bg-muted: #f9fafb;
+  --bg-subtle: #f3f4f6;
+  --bg-hover-blue: #eff6ff;
+  --border-color: #e5e7eb;
+  --border-soft: #efeff5;
+  --text-muted: #9ca3af;
+  --text-subtle: #6b7280;
+  --text-strong: #374151;
+  --seat-border: #d1d5db;
+  --table-body-bg: #d1d5db;
+}
+.seating-canvas.is-exporting .tname,
+.seating-canvas.is-exporting .tdims,
+.seating-canvas.is-exporting .rect-num,
+.seating-canvas.is-exporting .round-num {
+  color: var(--text-strong) !important;
+}
+.seating-canvas.is-exporting .initials {
+  color: white !important;
+}
+.seating-canvas.is-exporting .is-empty {
+  color: var(--text-muted) !important;
 }
 .canvas-controls {
   position: absolute;
