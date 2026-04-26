@@ -4,6 +4,7 @@ import type { Table, SeatOriginCorner, Seat } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import AerialSeatToken from './AerialSeatToken.vue'
+import { getDisplaySeatNumber, SEAT_TOKEN_SIZE, SEAT_GAP, SEAT_ROW_PADDING, RECT_BODY_HEIGHT, ROUND_RADIUS_BASE, ROUND_RADIUS_PER_SEAT, ROUND_RADIUS_MIN } from '@/utils/seatNumber'
 
 const props = defineProps<{ table: Table }>()
 const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
@@ -42,10 +43,10 @@ const bottomSeats = computed(() => {
 
 const rectBodyWidth = computed(() => {
   const count = Math.max(topSeats.value.length, 1)
-  return count * 40 + (count - 1) * 8 + 24
+  return count * SEAT_TOKEN_SIZE + (count - 1) * SEAT_GAP + SEAT_ROW_PADDING
 })
 
-const rectBodyHeight = 64 // Matching CSS min-height
+const rectBodyHeight = RECT_BODY_HEIGHT
 
 const textRotation = computed(() => {
   const name = props.table.name
@@ -106,18 +107,19 @@ const textRotation = computed(() => {
 
 // ── Round seat positioning ───────────────────────────────────────────────────
 
-const roundRadius = computed(() => Math.max(60, props.table.seats.length * 10))
-const roundContainerSize = computed(() => 2 * (roundRadius.value + 30))
+const roundRadius = computed(() => Math.max(ROUND_RADIUS_MIN, props.table.seats.length * ROUND_RADIUS_PER_SEAT))
+const roundContainerSize = computed(() => 2 * (roundRadius.value + ROUND_RADIUS_BASE))
 
 function seatCircleStyle(index: number) {
   const total = props.table.seats.length
   const angle = (index / total) * 2 * Math.PI - Math.PI / 2
   const r = roundRadius.value
-  const center = roundRadius.value + 30
+  const center = roundRadius.value + ROUND_RADIUS_BASE
+  const half = SEAT_TOKEN_SIZE / 2
   return {
     position: 'absolute' as const,
-    left: `${Math.round(center + r * Math.cos(angle) - 20)}px`,
-    top: `${Math.round(center + r * Math.sin(angle) - 20)}px`,
+    left: `${Math.round(center + r * Math.cos(angle) - half)}px`,
+    top: `${Math.round(center + r * Math.sin(angle) - half)}px`,
   }
 }
 
@@ -127,37 +129,8 @@ const innerCirclePx = computed(() => {
   return { d, offset }
 })
 
-// ── Seat number logic ───────────────────────────────────────────────────────────
-
-function getDisplaySeatNumber(seat: Seat) {
-  if (!props.table.seatOriginCorner) return seat.index + 1
-  const n = props.table.seats.length
-  const half = Math.ceil(n / 2)
-  const corner = props.table.seatOriginCorner
-  const i = seat.index
-
-  if (props.table.shape === 'rectangular') {
-    if (props.table.oneSided) {
-      if (corner === 'tl' || corner === 'bl') return i + 1
-      return n - i
-    }
-    let di: number
-    if (corner === 'tl') di = i
-    else if (corner === 'tr') di = i < half ? half - 1 - i : half + (n - 1 - i)
-    else if (corner === 'bl') di = i >= half ? i - half : (n - half) + i
-    else di = n - 1 - i
-    return di + 1
-  } else {
-    const cornerDeg: Record<SeatOriginCorner, number> = { tl: 225, tr: 315, br: 45, bl: 135 }
-    const ca = cornerDeg[corner]
-    let startK = 0; let minDist = Infinity
-    for (let k = 0; k < n; k++) {
-      const deg = ((k / n) * 360 - 90 + 360) % 360
-      let d = Math.abs(deg - ca); if (d > 180) d = 360 - d
-      if (d < minDist) { minDist = d; startK = k }
-    }
-    return ((i - startK + n) % n) + 1
-  }
+function displaySeatNum(seat: Seat) {
+  return getDisplaySeatNumber(props.table, seat.index)
 }
 
 function seatIndStyle(index: number) {
@@ -316,7 +289,7 @@ function setOrigin(corner: SeatOriginCorner) {
               class="rect-num"
               :style="{ transform: `rotate(${-table.rotation}deg)` }"
             >
-              {{ getDisplaySeatNumber(seat) }}
+              {{ displaySeatNum(seat) }}
             </span>
           </div>
           <!-- Seat-origin corner dots (visible when selected) -->
@@ -339,7 +312,7 @@ function setOrigin(corner: SeatOriginCorner) {
               class="rect-num"
               :style="{ transform: `rotate(${-table.rotation}deg)` }"
             >
-              {{ getDisplaySeatNumber(seat) }}
+              {{ displaySeatNum(seat) }}
             </span>
           </div>
         </div>
@@ -388,7 +361,7 @@ function setOrigin(corner: SeatOriginCorner) {
             class="round-num"
             :style="{ ...seatIndStyle(idx), transform: `rotate(${-table.rotation}deg)` }"
           >
-            {{ getDisplaySeatNumber(seat) }}
+            {{ displaySeatNum(seat) }}
           </span>
         </div>
 
@@ -475,7 +448,7 @@ function setOrigin(corner: SeatOriginCorner) {
   box-sizing: border-box;
 }
 .rect-body {
-  background: #d1d5db;
+  background: var(--table-body-bg);
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
   border-radius: 6px;
@@ -504,7 +477,7 @@ function setOrigin(corner: SeatOriginCorner) {
 .round-inner {
   position: absolute;
   border-radius: 50%;
-  background: #d1d5db;
+  background: var(--table-body-bg);
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
   display: flex;
@@ -521,12 +494,12 @@ function setOrigin(corner: SeatOriginCorner) {
 .tname {
   font-size: 11px;
   font-weight: 700;
-  color: #374151;
+  color: var(--text-strong);
   line-height: 1.2;
 }
 .tdims {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--text-subtle);
   line-height: 1.2;
 }
 .round-num {
@@ -548,7 +521,7 @@ function setOrigin(corner: SeatOriginCorner) {
   text-align: center;
   font-size: 9px;
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--text-muted);
   line-height: 1;
   display: flex;
   align-items: center;

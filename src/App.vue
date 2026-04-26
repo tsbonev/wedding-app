@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { watch, computed } from 'vue'
+import { watch, computed, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
-import { NConfigProvider, NGlobalStyle, NDialogProvider, NMessageProvider, enUS } from 'naive-ui'
+import { NConfigProvider, NGlobalStyle, NDialogProvider, NMessageProvider, enUS, darkTheme } from 'naive-ui'
 import { bgBG } from '@/locales/bgBG'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { useI18nStore } from '@/stores/useI18nStore'
+import { useAppConfigStore } from '@/stores/useAppConfigStore'
 
 const i18n = useI18nStore()
+const configStore = useAppConfigStore()
 const route = useRoute()
 
-const naiveLocale = computed(() => {
-  return i18n.locale === 'en' ? enUS : bgBG
+const naiveLocale = computed(() => i18n.locale === 'en' ? enUS : bgBG)
+const naiveTheme = computed(() => configStore.isDarkMode ? darkTheme : null)
+const naiveDateLocale = computed(() => null)
+
+watchEffect(() => {
+  document.documentElement.classList.toggle('dark', configStore.isDarkMode)
 })
 
 const routeTitleMap: Record<string, string> = {
@@ -40,11 +46,10 @@ watch(
   },
   { immediate: true }
 )
-const naiveDateLocale = computed(() => null)
 </script>
 
 <template>
-  <n-config-provider :locale="naiveLocale" :date-locale="naiveDateLocale">
+  <n-config-provider :locale="naiveLocale" :date-locale="naiveDateLocale" :theme="naiveTheme">
     <n-dialog-provider>
       <n-message-provider>
         <n-global-style />

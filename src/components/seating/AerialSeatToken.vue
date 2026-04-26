@@ -2,13 +2,15 @@
 import { ref, computed, watch, nextTick, h } from 'vue'
 import { NTooltip, NSelect } from 'naive-ui'
 import type { SelectOption } from 'naive-ui'
-import type { SeatOriginCorner, MenuItem } from '@/types'
+import type { MenuItem } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useMenuStore } from '@/stores/useMenuStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import { useI18nStore } from '@/stores/useI18nStore'
+import { getDisplaySeatNumber } from '@/utils/seatNumber'
+import { getGroupColor } from '@/utils/guestFormatters'
 
 const props = defineProps<{
   tableId: string
@@ -64,34 +66,10 @@ const fullName = computed(() =>
   guest.value ? `${guest.value.firstName} ${guest.value.lastName}` : i18n.t('seat_label').replace('{n}', String(displaySeatNumber.value))
 )
 
-// ── Display seat number based on origin corner ────────────────────────────────
-
 const displaySeatNumber = computed(() => {
   const table = seatingStore.getById(props.tableId)
-  if (!table || !table.seatOriginCorner) return props.seatIndex + 1
-  const n = table.seats.length
-  const half = Math.ceil(n / 2)
-  const corner: SeatOriginCorner = table.seatOriginCorner
-  const i = props.seatIndex
-
-  if (table.shape === 'rectangular') {
-    let di: number
-    if (corner === 'tl') di = i
-    else if (corner === 'tr') di = i < half ? half - 1 - i : half + (n - 1 - i)
-    else if (corner === 'bl') di = i >= half ? i - half : (n - half) + i
-    else di = n - 1 - i
-    return di + 1
-  } else {
-    const cornerDeg: Record<SeatOriginCorner, number> = { tl: 225, tr: 315, br: 45, bl: 135 }
-    const ca = cornerDeg[corner]
-    let startK = 0; let minDist = Infinity
-    for (let k = 0; k < n; k++) {
-      const deg = ((k / n) * 360 - 90 + 360) % 360
-      let d = Math.abs(deg - ca); if (d > 180) d = 360 - d
-      if (d < minDist) { minDist = d; startK = k }
-    }
-    return ((i - startK + n) % n) + 1
-  }
+  if (!table) return props.seatIndex + 1
+  return getDisplaySeatNumber(table, props.seatIndex)
 })
 
 // ── Assign dropdown ───────────────────────────────────────────────────────────
@@ -100,7 +78,7 @@ const selectOptions = computed((): (SelectOption & { color?: string | null })[] 
   guestStore.unassignedGuests.map(g => ({
     label: `${g.firstName} ${g.lastName}`,
     value: g.id,
-    color: g.groupId ? (groupStore.getById(g.groupId)?.color ?? null) : null,
+    color: getGroupColor(g.groupId, groupStore.getById),
   }))
 )
 
@@ -142,7 +120,6 @@ function onDragStart(event: DragEvent) {
 
   if (configStore.isLinkingMode) {
     configStore.activeLinkingSource = guest.value.id
-    // Set transparent drag image
     const img = new Image()
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
     event.dataTransfer!.setDragImage(img, 0, 0)
@@ -173,7 +150,6 @@ function onDrop(event: DragEvent) {
   if (!guestId) return
 
   if (configStore.isLinkingMode) {
-    // Linking Mode: 
     if (props.guestId && props.guestId !== guestId) {
       if (configStore.linkingModeType === 'partner') {
         guestStore.updateGuest(guestId, { partnerId: props.guestId })
@@ -260,7 +236,7 @@ function onDoubleClick() {
                 class="adjoining-child-badge"
                 :class="`pos-${idx % 4}`"
                 :style="{
-                  background: child.groupId ? (groupStore.getById(child.groupId)?.color ?? '#3b82f6') : '#3b82f6',
+                  background: getGroupColor(child.groupId, groupStore.getById) ?? '#3b82f6',
                   transform: rotation ? `rotate(${-rotation}deg)` : ''
                 }"
                 @dblclick.stop="emit('edit-guest', child.id)"
@@ -279,7 +255,7 @@ function onDoubleClick() {
                 {{ groupStore.getById(child.groupId)?.name }}
               </div>
               <div v-if="child.mealChoiceId" class="tooltip-row">
-                {{ menuStore.menuOptions.find(m => m.id === child.mealChoiceId)?.emoji }} 
+                {{ menuStore.menuOptions.find(m => m.id === child.mealChoiceId)?.emoji }}
                 {{ menuStore.menuOptions.find(m => m.id === child.mealChoiceId)?.label }}
               </div>
               <div v-if="child.dietaryNotes" class="tooltip-row tooltip-diet">{{ child.dietaryNotes }}</div>
@@ -337,7 +313,7 @@ function onDoubleClick() {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 2px solid #d1d5db;
+  border: 2px solid var(--seat-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -379,20 +355,20 @@ function onDoubleClick() {
 }
 .is-occupied:active { cursor: grabbing; }
 .is-empty {
-  background: #f9fafb;
-  color: #9ca3af;
+  background: var(--bg-muted);
+  color: var(--text-muted);
   border-style: dashed;
   font-size: 10px;
 }
 .is-empty:hover {
   border-color: #60a5fa;
-  background: #eff6ff;
+  background: var(--bg-hover-blue);
   color: #3b82f6;
 }
 .is-drag-over.is-empty {
   border-color: #60a5fa;
   border-style: solid;
-  background: #eff6ff;
+  background: var(--bg-hover-blue);
   color: #3b82f6;
 }
 .is-drag-over.is-occupied {
@@ -443,12 +419,12 @@ function onDoubleClick() {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--seat-border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  color: #9ca3af;
+  color: var(--text-muted);
   opacity: 0.5;
 }
 
@@ -487,5 +463,5 @@ function onDoubleClick() {
   line-height: 1.6;
 }
 .group-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.tooltip-diet { color: #9ca3af; font-style: italic; }
+.tooltip-diet { color: var(--text-muted); font-style: italic; }
 </style>

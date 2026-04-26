@@ -2,11 +2,12 @@
 import { ref, computed, watch, nextTick, h } from 'vue'
 import { NSelect } from 'naive-ui'
 import type { SelectOption } from 'naive-ui'
-import type { SeatOriginCorner } from '@/types'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useI18nStore } from '@/stores/useI18nStore'
+import { getDisplaySeatNumber } from '@/utils/seatNumber'
+import { getGroupColor } from '@/utils/guestFormatters'
 
 const props = defineProps<{
   tableId: string
@@ -40,39 +41,12 @@ watch(showDropdown, async (val) => {
 
 const guest = computed(() => props.guestId ? guestStore.getById(props.guestId) : null)
 
-const groupColor = computed(() => {
-  if (!guest.value?.groupId) return null
-  return groupStore.getById(guest.value.groupId)?.color ?? null
-})
-
-// ── Display seat number ───────────────────────────────────────────────────────
+const groupColor = computed(() => getGroupColor(guest.value?.groupId ?? null, groupStore.getById))
 
 const displaySeatNumber = computed(() => {
   const table = seatingStore.getById(props.tableId)
-  if (!table || !table.seatOriginCorner) return props.seatIndex + 1
-  const n = table.seats.length
-  const half = Math.ceil(n / 2)
-  const corner: SeatOriginCorner = table.seatOriginCorner
-  const i = props.seatIndex
-
-  if (table.shape === 'rectangular') {
-    let di: number
-    if (corner === 'tl') di = i
-    else if (corner === 'tr') di = i < half ? half - 1 - i : half + (n - 1 - i)
-    else if (corner === 'bl') di = i >= half ? i - half : (n - half) + i
-    else di = n - 1 - i
-    return di + 1
-  } else {
-    const cornerDeg: Record<SeatOriginCorner, number> = { tl: 225, tr: 315, br: 45, bl: 135 }
-    const ca = cornerDeg[corner]
-    let startK = 0; let minDist = Infinity
-    for (let k = 0; k < n; k++) {
-      const deg = ((k / n) * 360 - 90 + 360) % 360
-      let d = Math.abs(deg - ca); if (d > 180) d = 360 - d
-      if (d < minDist) { minDist = d; startK = k }
-    }
-    return ((i - startK + n) % n) + 1
-  }
+  if (!table) return props.seatIndex + 1
+  return getDisplaySeatNumber(table, props.seatIndex)
 })
 
 // ── Assign dropdown ───────────────────────────────────────────────────────────
@@ -81,7 +55,7 @@ const selectOptions = computed((): (SelectOption & { color?: string | null })[] 
   guestStore.unassignedGuests.map(g => ({
     label: `${g.firstName} ${g.lastName}`,
     value: g.id,
-    color: g.groupId ? (groupStore.getById(g.groupId)?.color ?? null) : null,
+    color: getGroupColor(g.groupId, groupStore.getById),
   }))
 )
 
@@ -115,7 +89,7 @@ function onDragStart(event: DragEvent) {
   if (!guest.value) return
   event.stopPropagation()
   event.dataTransfer!.setData('guestId', guest.value.id)
-  event.dataTransfer!.setData('text/plain', guest.value.id) // Fallback
+  event.dataTransfer!.setData('text/plain', guest.value.id)
   event.dataTransfer!.setData('sourceTableId', props.tableId)
   event.dataTransfer!.setData('sourceSeatIndex', String(props.seatIndex))
   event.dataTransfer!.effectAllowed = 'move'
@@ -126,9 +100,7 @@ function onDragStart(event: DragEvent) {
 
 function onDragOver(event: DragEvent) {
   event.preventDefault()
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
-  }
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
   isDragOver.value = true
 }
 
@@ -156,9 +128,7 @@ function unassign() {
 }
 
 function onDoubleClick() {
-  if (props.guestId) {
-    emit('edit-guest', props.guestId)
-  }
+  if (props.guestId) emit('edit-guest', props.guestId)
 }
 </script>
 
@@ -226,7 +196,7 @@ function onDoubleClick() {
   font-size: 12px;
   margin: 2px 0;
   min-height: 26px;
-  border: 1px dashed #ccc;
+  border: 1px dashed var(--border-color);
   cursor: pointer;
 }
 .occupied {
@@ -237,16 +207,16 @@ function onDoubleClick() {
   cursor: grabbing;
 }
 .empty {
-  background: #fafafa;
-  color: #aaa;
+  background: var(--bg-muted);
+  color: var(--text-muted);
 }
 .empty:hover {
-  background: #f0f9ff;
+  background: var(--bg-hover-blue);
   border-color: #93c5fd;
   color: #3b82f6;
 }
 .is-drag-over {
-  background: #f0f9ff !important;
+  background: var(--bg-hover-blue) !important;
   border-color: #3b82f6 !important;
   border-style: solid !important;
 }
@@ -267,7 +237,7 @@ function onDoubleClick() {
   background: none;
   border: none;
   cursor: pointer;
-  color: #999;
+  color: var(--text-muted);
   font-size: 14px;
   line-height: 1;
   padding: 0 2px;

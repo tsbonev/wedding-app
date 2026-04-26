@@ -226,6 +226,7 @@ async function handlePrint() {
 
 <template>
   <div @mousemove="onMouseMove" @dragover="onMouseMove">
+    <h2 style="margin-top: 10px;">{{ i18n.t('seating') }}</h2>
       <!-- Print-only header -->
       <div class="print-header">
         <h1 v-if="configStore.coupleName">{{ configStore.coupleName }}</h1>
@@ -301,7 +302,7 @@ async function handlePrint() {
       <!-- ── Floor Plan tab ─────────────────────────────────────────────────── -->
       <n-tab-pane name="floorplan" :tab="i18n.t('floor_plan')">
         <div style="display: flex; flex-direction: column; gap: 16px;">
-          <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; background: white; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div class="floorplan-toolbar">
             <div style="display: flex; gap: 8px; align-items: center;">
               <n-button
                 :type="configStore.isLinkingMode ? 'primary' : 'default'"
@@ -310,7 +311,7 @@ async function handlePrint() {
               >
                 {{ configStore.isLinkingMode ? i18n.t('disable') : i18n.t('enable') }} {{ i18n.t('linking_mode') }}
               </n-button>
-              
+
               <template v-if="configStore.isLinkingMode">
                 <n-radio-group v-model:value="configStore.linkingModeType" size="small">
                   <n-radio-button value="partner">{{ i18n.t('partner_mode') }}</n-radio-button>
@@ -319,35 +320,35 @@ async function handlePrint() {
               </template>
             </div>
 
-            <div style="display: flex; gap: 16px; align-items: center; border-left: 1px solid #e2e8f0; padding-left: 16px;">
-              <div style="display: flex; gap: 8px; align-items: center;" class="no-print">
-                <span style="font-size: 13px; color: #64748b;">{{ i18n.t('partners') }}</span>
+            <div class="toolbar-section no-print">
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span class="toolbar-text">{{ i18n.t('partners') }}</span>
                 <n-switch v-model:value="configStore.showRelationLines" size="small" />
               </div>
-              <div style="display: flex; gap: 8px; align-items: center;" class="no-print">
-                <span style="font-size: 13px; color: #64748b;">{{ i18n.t('parental') }}</span>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span class="toolbar-text">{{ i18n.t('parental') }}</span>
                 <n-switch v-model:value="configStore.showParentalLines" size="small" />
               </div>
             </div>
 
-            <div style="font-size: 13px; color: #64748b; flex: 1;" class="no-print">
+            <span class="toolbar-text no-print" style="flex: 1;">
               <template v-if="configStore.isLinkingMode">
                 {{ configStore.linkingModeType === 'partner' ? i18n.t('drag_partner') : i18n.t('drag_child') }}
               </template>
               <template v-else>
                 {{ i18n.t('enable_linking_instruction') }}
               </template>
-            </div>
+            </span>
 
-          <div style="border-left: 1px solid #e2e8f0; padding-left: 16px; display: flex; gap: 8px;" class="no-print">
-            <n-button 
-              size="small" 
-              :type="configStore.isGuestSidebarOpen ? 'primary' : 'default'"
-              @click="configStore.isGuestSidebarOpen = !configStore.isGuestSidebarOpen"
-            >
-              {{ configStore.isGuestSidebarOpen ? i18n.t('hide') : i18n.t('show') }} {{ i18n.t('unassigned') }}
-            </n-button>
-          </div>
+            <div class="toolbar-section no-print">
+              <n-button
+                size="small"
+                :type="configStore.isGuestSidebarOpen ? 'primary' : 'default'"
+                @click="configStore.isGuestSidebarOpen = !configStore.isGuestSidebarOpen"
+              >
+                {{ configStore.isGuestSidebarOpen ? i18n.t('hide') : i18n.t('show') }} {{ i18n.t('unassigned') }}
+              </n-button>
+            </div>
           </div>
           <div style="position: relative; overflow: hidden; border-radius: 8px;">
             <div 
@@ -541,11 +542,31 @@ async function handlePrint() {
     margin: 0 !important;
   }
 }
+.floorplan-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  background: var(--bg-surface);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-color);
+}
+.toolbar-text {
+  color: var(--text-subtle);
+}
 .canvas-viewport {
   flex: 1;
   position: relative;
   height: 800px;
-  background: #f1f5f9;
+  background: var(--bg-subtle);
   overflow: hidden;
   cursor: grab;
   user-select: none;
@@ -555,8 +576,8 @@ async function handlePrint() {
 }
 .seating-canvas {
   position: absolute;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-color);
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 .canvas-controls {
@@ -576,13 +597,13 @@ async function handlePrint() {
   transform: translateX(-50%);
 }
 .zoom-indicator {
-  background: white;
+  background: var(--bg-surface);
   padding: 2px 6px;
   border-radius: 4px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color);
   font-size: 11px;
   text-align: center;
-  color: #64748b;
+  color: var(--text-subtle);
   font-weight: 600;
 }
 .print-header,

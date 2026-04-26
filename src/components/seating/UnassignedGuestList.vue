@@ -4,9 +4,9 @@ import type { Guest } from '@/types'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
-
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useI18nStore } from '@/stores/useI18nStore'
+import { getGroupColor } from '@/utils/guestFormatters'
 
 defineProps<{ guests: Guest[] }>()
 const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
@@ -22,7 +22,6 @@ function onResizeStart(event: MouseEvent) {
   const startWidth = configStore.guestSidebarWidth
 
   function onMove(e: MouseEvent) {
-    // Reverse the calculation because the handle is on the LEFT side of the drawer
     configStore.guestSidebarWidth = Math.max(160, Math.min(500, startWidth + (startX - e.clientX)))
   }
   function onUp() {
@@ -37,7 +36,6 @@ function onDragStart(event: DragEvent, guest: Guest) {
   event.dataTransfer?.setData('guestId', guest.id)
   if (configStore.isLinkingMode) {
     configStore.activeLinkingSource = guest.id
-    // Set transparent drag image
     const img = new Image()
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
     event.dataTransfer?.setDragImage(img, 0, 0)
@@ -53,9 +51,7 @@ function onDragEnd() {
 }
 
 function onDragOver(event: DragEvent) {
-  if (configStore.isLinkingMode) {
-    event.preventDefault()
-  }
+  if (configStore.isLinkingMode) event.preventDefault()
 }
 
 function onDrop(event: DragEvent, targetGuest: Guest) {
@@ -73,8 +69,7 @@ function onDrop(event: DragEvent, targetGuest: Guest) {
 }
 
 function groupColor(guest: Guest) {
-  if (!guest.groupId) return null
-  return groupStore.getById(guest.groupId)?.color ?? null
+  return getGroupColor(guest.groupId, groupStore.getById)
 }
 
 function onDoubleClick(guestId: string) {
@@ -84,9 +79,9 @@ function onDoubleClick(guestId: string) {
 
 <template>
   <Transition name="slide">
-    <div 
+    <div
       v-if="configStore.isGuestSidebarOpen"
-      class="unassigned-list" 
+      class="unassigned-list"
       :style="{ width: configStore.guestSidebarWidth + 'px' }"
     >
       <div class="resize-handle" @mousedown="onResizeStart" />
@@ -138,8 +133,8 @@ function onDoubleClick(guestId: string) {
   top: 0;
   bottom: 0;
   z-index: 100;
-  background: white;
-  border-left: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-color);
   box-shadow: -4px 0 15px -3px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
@@ -178,14 +173,14 @@ function onDoubleClick(guestId: string) {
   justify-content: space-between;
   padding: 6px 8px;
   margin-bottom: 4px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
   cursor: grab;
   gap: 6px;
 }
-.guest-chip:hover { background: #f0f9ff; border-color: #93c5fd; }
+.guest-chip:hover { background: var(--bg-hover-blue); border-color: #93c5fd; }
 .guest-chip:active { cursor: grabbing; }
 
 .group-dot {
@@ -203,8 +198,7 @@ function onDoubleClick(guestId: string) {
 .sidebar-footer {
   margin-top: auto;
   padding: 12px 14px;
-  border-top: 1px solid #eee;
-  background: #fafafa;
+  border-top: 1px solid var(--border-soft);
   border-radius: 0 0 8px 8px;
 }
 </style>

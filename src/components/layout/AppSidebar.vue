@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NMenu, NSpace, NButton } from 'naive-ui'
+import { NMenu, NSpace, NButton, NIcon } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
+import { Moon, Sun } from 'lucide-vue-next'
 import { useI18nStore } from '@/stores/useI18nStore'
+import { useAppConfigStore } from '@/stores/useAppConfigStore'
 
 const props = defineProps<{
   collapsed: boolean
@@ -12,6 +14,7 @@ const props = defineProps<{
 const route = useRoute()
 const router = useRouter()
 const i18n = useI18nStore()
+const configStore = useAppConfigStore()
 
 const menuOptions = computed((): MenuOption[] => [
   { label: i18n.t('dashboard'), key: '/dashboard', icon: () => h('span', '📊') },
@@ -44,23 +47,33 @@ function handleSelect(key: string) {
     </div>
     <div class="language-switcher" :class="{ 'is-collapsed': props.collapsed }">
       <n-space :vertical="props.collapsed" justify="center" :size="props.collapsed ? 12 : 8">
-        <n-button 
-          circle 
-          :size="props.collapsed ? 'medium' : 'small'" 
+        <n-button
+          circle
+          :size="props.collapsed ? 'medium' : 'small'"
           @click="i18n.setLocale('en')"
           :type="i18n.locale === 'en' ? 'primary' : 'default'"
           title="English"
         >
           🇺🇸
         </n-button>
-        <n-button 
-          circle 
-          :size="props.collapsed ? 'medium' : 'small'" 
+        <n-button
+          circle
+          :size="props.collapsed ? 'medium' : 'small'"
           @click="i18n.setLocale('bg')"
           :type="i18n.locale === 'bg' ? 'primary' : 'default'"
           title="Български"
         >
           🇧🇬
+        </n-button>
+        <n-button
+          circle
+          :size="props.collapsed ? 'medium' : 'small'"
+          @click="configStore.isDarkMode = !configStore.isDarkMode"
+          :title="configStore.isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'"
+        >
+          <template #icon>
+            <n-icon :component="configStore.isDarkMode ? Sun : Moon" />
+          </template>
         </n-button>
       </n-space>
     </div>
@@ -78,7 +91,7 @@ function handleSelect(key: string) {
 }
 .language-switcher {
   padding: 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--border-soft);
 }
 .language-switcher.is-collapsed {
   padding: 16px 0;

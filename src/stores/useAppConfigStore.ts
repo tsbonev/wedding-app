@@ -1,5 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import type { Table } from '@/types'
+import { SEAT_TOKEN_SIZE, SEAT_GAP, SEAT_ROW_PADDING, RECT_BODY_HEIGHT, ROUND_RADIUS_BASE, ROUND_RADIUS_PER_SEAT, ROUND_RADIUS_MIN } from '@/utils/seatNumber'
 
 export const useAppConfigStore = defineStore('config', () => {
   const coupleName = ref('')
@@ -22,8 +24,9 @@ export const useAppConfigStore = defineStore('config', () => {
   const zoomLevel = ref(1)
   const panX = ref(0)
   const panY = ref(0)
+  const isDarkMode = ref(false)
 
-  function fitCanvasToTables(tables: any[]) {
+  function fitCanvasToTables(tables: Table[]) {
     if (tables.length === 0) {
       canvasWidth.value = 1200
       canvasHeight.value = 1000
@@ -40,11 +43,11 @@ export const useAppConfigStore = defineStore('config', () => {
 
       if (table.shape === 'rectangular') {
         const topCount = table.oneSided ? table.seats.length : Math.ceil(table.seats.length / 2)
-        w = topCount * 40 + (topCount - 1) * 8 + 24
-        h = 64
+        w = topCount * SEAT_TOKEN_SIZE + (topCount - 1) * SEAT_GAP + SEAT_ROW_PADDING
+        h = RECT_BODY_HEIGHT
       } else {
-        const radius = Math.max(60, table.seats.length * 10)
-        w = 2 * (radius + 30)
+        const radius = Math.max(ROUND_RADIUS_MIN, table.seats.length * ROUND_RADIUS_PER_SEAT)
+        w = 2 * (radius + ROUND_RADIUS_BASE)
         h = w
       }
 
@@ -67,17 +70,17 @@ export const useAppConfigStore = defineStore('config', () => {
     canvasHeight.value = Math.max(1000, Math.ceil(maxB + 200))
   }
 
-  return { 
-    coupleName, 
-    weddingDate, 
-    venue, 
-    guestSidebarWidth, 
+  return {
+    coupleName,
+    weddingDate,
+    venue,
+    guestSidebarWidth,
     isGuestSidebarOpen,
     seatingActiveTab,
-    showRelationLines, 
-    showParentalLines, 
-    showRelationLinesOnlySameTable, 
-    isLinkingMode, 
+    showRelationLines,
+    showParentalLines,
+    showRelationLinesOnlySameTable,
+    isLinkingMode,
     linkingModeType,
     activeLinkingSource,
     mousePosX,
@@ -87,6 +90,7 @@ export const useAppConfigStore = defineStore('config', () => {
     zoomLevel,
     panX,
     panY,
+    isDarkMode,
     fitCanvasToTables
   }
 }, { persist: true })

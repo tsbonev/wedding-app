@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { NCard, NButton, NPopconfirm, NInputNumber, NSpace, NInput, NCheckbox, useDialog } from 'naive-ui'
-import type { Table, SeatOriginCorner } from '@/types'
+import type { Table } from '@/types'
 import { useSeatingStore } from '@/stores/useSeatingStore'
 import { useI18nStore } from '@/stores/useI18nStore'
 import SeatBadge from './SeatBadge.vue'
+import { getDisplaySeatNumber } from '@/utils/seatNumber'
 
 const props = defineProps<{ table: Table }>()
 const emit = defineEmits<{
@@ -77,36 +78,8 @@ function updateCapacity() {
   }
 }
 
-function displayIndex(seatIndex: number): number {
-  const n = props.table.seats.length
-  const half = Math.ceil(n / 2)
-  const corner = props.table.seatOriginCorner
-  const i = seatIndex
-  if (!corner) return i
-  if (corner === 'tl') return i
-  if (props.table.shape === 'rectangular') {
-    if (props.table.oneSided) {
-      if (corner === 'bl') return i
-      return n - 1 - i
-    }
-    if (corner === 'tr') return i < half ? half - 1 - i : half + (n - 1 - i)
-    if (corner === 'bl') return i >= half ? i - half : (n - half) + i
-    return n - 1 - i // br
-  }
-  // round
-  const cornerDeg: Record<SeatOriginCorner, number> = { tl: 225, tr: 315, br: 45, bl: 135 }
-  const ca = cornerDeg[corner]
-  let startK = 0; let minDist = Infinity
-  for (let k = 0; k < n; k++) {
-    const deg = ((k / n) * 360 - 90 + 360) % 360
-    let d = Math.abs(deg - ca); if (d > 180) d = 360 - d
-    if (d < minDist) { minDist = d; startK = k }
-  }
-  return (i - startK + n) % n
-}
-
 const sortedSeats = computed(() =>
-  [...props.table.seats].sort((a, b) => displayIndex(a.index) - displayIndex(b.index))
+  [...props.table.seats].sort((a, b) => getDisplaySeatNumber(props.table, a.index) - getDisplaySeatNumber(props.table, b.index))
 )
 </script>
 

@@ -149,10 +149,10 @@ function cancelEdit() {
 }
 
 .group-card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px 14px;
-  background: #fafafa;
+  background: var(--bg-muted);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -230,7 +230,7 @@ function cancelEdit() {
 
 .field-label {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   line-height: 1;
 }
 </style>

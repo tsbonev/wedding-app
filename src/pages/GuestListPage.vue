@@ -4,7 +4,7 @@ import {
   NButton, NSpace, NInput, NSelect, NDataTable, NTag, NPopconfirm, NText,
   NDropdown, NTooltip
 } from 'naive-ui'
-import type { DataTableColumns, SelectOption, DataTableRowKey, DropdownOption } from 'naive-ui'
+import type { DataTableColumns, SelectOption, DataTableRowKey } from 'naive-ui'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useMenuStore } from '@/stores/useMenuStore'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -16,6 +16,7 @@ import GuestFormModal from '@/components/guest/GuestFormModal.vue'
 import BulkAddModal from '@/components/guest/BulkAddModal.vue'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
 import EmptyState from '@/components/shared/EmptyState.vue'
+import { useMassEdit } from '@/composables/useMassEdit'
 
 const guestStore = useGuestStore()
 const menuStore = useMenuStore()
@@ -106,8 +107,6 @@ const filtered = computed(() => {
 
 type EditField = 'name' | 'group' | 'rsvp' | 'meal'
 const editingCell = ref<{ id: string; field: EditField } | null>(null)
-// Controlled open state for the active dropdown — drives `show` directly so
-// the menu opens on the first click without needing a second click.
 const selectOpen = ref(false)
 
 const editFirst = ref('')
@@ -167,7 +166,7 @@ const groupCellOptions = computed<(SelectOption & { color?: string })[]>(() => [
 ])
 
 function renderGroupLabel(option: SelectOption & { color?: string }) {
-  const content = option.color 
+  const content = option.color
     ? h('div', { style: 'display:flex;align-items:center;gap:8px;overflow:hidden' }, [
         h('span', { style: `width:10px;height:10px;border-radius:50%;background:${option.color};display:inline-block;flex-shrink:0` }),
         h('span', { style: 'text-overflow:ellipsis;overflow:hidden;white-space:nowrap' }, String(option.label)),
@@ -176,21 +175,7 @@ function renderGroupLabel(option: SelectOption & { color?: string }) {
 
   return h(NTooltip, { trigger: 'hover', placement: 'top-start' }, {
     trigger: () => content,
-    default: () => String(option.label)
-  })
-}
-
-function renderSingleSelectLabel(option: SelectOption & { color?: string }) {
-  const content = option.color 
-    ? h('div', { style: 'display:flex;align-items:center;gap:8px;overflow:hidden' }, [
-        h('span', { style: `width:10px;height:10px;border-radius:50%;background:${option.color};display:inline-block;flex-shrink:0` }),
-        h('span', { style: 'text-overflow:ellipsis;overflow:hidden;white-space:nowrap' }, String(option.label)),
-      ])
-    : h('span', String(option.label))
-
-  return h(NTooltip, { trigger: 'hover', placement: 'top-start' }, {
-    trigger: () => content,
-    default: () => String(option.label)
+    default: () => String(option.label),
   })
 }
 
@@ -235,75 +220,11 @@ function openEdit(guest: Guest) {
   showModal.value = true
 }
 
-const massEditOptions = computed(() => [
-  {
-    label: i18n.t('rsvp_status'),
-    key: 'rsvp',
-    children: [
-      { label: i18n.t('confirmed'), key: 'rsvp-confirmed' },
-      { label: i18n.t('pending'), key: 'rsvp-pending' },
-      { label: i18n.t('declined'), key: 'rsvp-declined' }
-    ]
-  },
-  {
-    label: i18n.t('group'),
-    key: 'group',
-    children: [
-      { label: `— ${i18n.t('none')} —`, key: 'group-none' },
-      ...groupStore.groups.map(g => ({ label: g.name, key: `group-${g.id}`, color: g.color }))
-    ]
-  },
-  {
-    label: i18n.t('selected_menu'),
-    key: 'menu',
-    children: [
-      { label: `— ${i18n.t('none')} —`, key: 'menu-none' },
-      ...menuStore.menuOptions.map(o => ({ label: `${o.emoji} ${o.label}`, key: `menu-${o.id}` }))
-    ]
-  }
-])
+// ── Mass edit ─────────────────────────────────────────────────────────────────
 
-function renderMassEditLabel(option: DropdownOption) {
-  if (String(option.key).startsWith('group-') && option.color) {
-    const content = h(NSpace, { align: 'center', size: 'small', style: 'flex-wrap: nowrap; overflow: hidden;' }, {
-      default: () => [
-        h(NTag, {
-          color: { color: String(option.color), textColor: '#fff' },
-          bordered: false,
-          size: 'small',
-          style: 'width: 12px; height: 12px; padding: 0; border-radius: 50%; flex-shrink: 0;'
-        }),
-        h('span', { style: 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap;' }, String(option.label))
-      ]
-    })
-
-    return h(NTooltip, { trigger: 'hover', placement: 'right' }, {
-      trigger: () => content,
-      default: () => String(option.label)
-    })
-  }
-  return String(option.label)
-}
-
-function handleMassEdit(key: string) {
-  const ids = checkedRowKeys.value as string[]
-  if (ids.length === 0) return
-
-  if (key.startsWith('rsvp-')) {
-    const status = key.replace('rsvp-', '') as RSVPStatus
-    guestStore.bulkUpdateGuests(ids, { rsvpStatus: status })
-  } else if (key.startsWith('group-')) {
-    const groupId = key.replace('group-', '')
-    guestStore.bulkUpdateGuests(ids, { groupId: groupId === 'none' ? null : groupId })
-  } else if (key.startsWith('menu-')) {
-    const mealId = key.replace('menu-', '')
-    guestStore.bulkUpdateGuests(ids, { mealChoiceId: mealId === 'none' ? null : mealId })
-  }
-  checkedRowKeys.value = []
-}
+const { massEditOptions, renderMassEditLabel, handleMassEdit } = useMassEdit(checkedRowKeys)
 
 // ── Columns ───────────────────────────────────────────────────────────────────
-// Must be `computed` so the table re-renders when editingCell / selectOpen change.
 
 const columns = computed<DataTableColumns<Guest>>(() => [
   {
@@ -372,7 +293,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
           value: row.groupId ?? '',
           options: groupCellOptions.value,
           renderLabel: renderGroupLabel,
-          renderLabelSingle: renderSingleSelectLabel,
+          renderLabelSingle: renderGroupLabel,
           filterable: true,
           size: 'small',
           show: selectOpen.value,
@@ -517,7 +438,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
         v-model:value="groupFilter"
         :options="groupFilterOptions"
         :render-label="renderGroupLabel"
-        :render-label-single="renderSingleSelectLabel"
+        :render-label-single="renderGroupLabel"
         filterable
         style="width: 250px"
       />
@@ -569,8 +490,6 @@ const columns = computed<DataTableColumns<Guest>>(() => [
 </template>
 
 <style scoped>
-/* Every editable cell gets identical sizing so switching to an NSelect
-   (same height via size="small") causes zero layout shift. */
 .editable-cell {
   cursor: pointer;
   width: 100%;

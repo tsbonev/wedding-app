@@ -8,6 +8,7 @@ import { useGroupStore } from '@/stores/useGroupStore'
 import { useI18nStore } from '@/stores/useI18nStore'
 import type { Room, Guest } from '@/types'
 import RoomGuestList from './RoomGuestList.vue'
+import { getGroupColor } from '@/utils/guestFormatters'
 
 const roomStore = useRoomStore()
 const guestStore = useGuestStore()
@@ -46,9 +47,8 @@ function getGuest(id: string): Guest | undefined {
   return guestStore.getById(id)
 }
 
-function getGroupColor(guest: Guest | undefined) {
-  if (!guest?.groupId) return null
-  return groupStore.getById(guest.groupId)?.color ?? null
+function guestGroupColor(guest: Guest | undefined) {
+  return getGroupColor(guest?.groupId ?? null, groupStore.getById)
 }
 
 function formatRoomType(type: string) {
@@ -105,9 +105,9 @@ const emit = defineEmits<{
                         v-for="gid in room.guestIds"
                         :key="gid"
                         class="assigned-guest-tag"
-                        :style="getGroupColor(getGuest(gid)) ? { borderLeftColor: getGroupColor(getGuest(gid))!, background: getGroupColor(getGuest(gid)) + '18' } : {}"
+                        :style="guestGroupColor(getGuest(gid)) ? { borderLeftColor: guestGroupColor(getGuest(gid))!, background: guestGroupColor(getGuest(gid)) + '18' } : {}"
                       >
-                        <span v-if="getGroupColor(getGuest(gid))" class="group-dot" :style="{ background: getGroupColor(getGuest(gid))! }" />
+                        <span v-if="guestGroupColor(getGuest(gid))" class="group-dot" :style="{ background: guestGroupColor(getGuest(gid))! }" />
                         <span class="guest-name">
                           {{ getGuest(gid)?.firstName }} {{ getGuest(gid)?.lastName }}
                         </span>
@@ -131,16 +131,16 @@ const emit = defineEmits<{
 <style scoped>
 .room-assignment-container {
   display: flex;
-  height: calc(100vh - 180px); /* Adjust based on header/tabs */
-  background: white;
-  border: 1px solid #efeff5;
+  height: calc(100vh - 180px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .assignment-canvas {
   flex: 1;
-  background: #f3f4f6;
+  background: var(--bg-subtle);
   position: relative;
 }
 
@@ -149,7 +149,7 @@ const emit = defineEmits<{
   border: 2px dashed transparent;
   border-radius: 12px;
   transition: all 0.2s;
-  background: white;
+  background: var(--bg-surface);
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
@@ -171,7 +171,7 @@ const emit = defineEmits<{
   flex-wrap: wrap;
   gap: 6px;
   padding: 8px;
-  background: #f9fafb;
+  background: var(--bg-muted);
   border-radius: 6px;
   margin-top: 4px;
 }
@@ -179,8 +179,8 @@ const emit = defineEmits<{
 .assigned-guest-tag {
   display: flex;
   align-items: center;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 2px 8px;
   font-size: 12px;
@@ -205,7 +205,7 @@ const emit = defineEmits<{
 .unassign-btn {
   background: none;
   border: none;
-  color: #9ca3af;
+  color: var(--text-muted);
   cursor: pointer;
   margin-left: 4px;
   padding: 0 2px;
@@ -223,7 +223,7 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9ca3af;
+  color: var(--text-muted);
   font-style: italic;
   font-size: 13px;
 }

@@ -6,6 +6,7 @@ import type { Guest } from '@/types'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useI18nStore } from '@/stores/useI18nStore'
 import RSVPBadge from '@/components/shared/RSVPBadge.vue'
+import { getGroupColor } from '@/utils/guestFormatters'
 
 const props = defineProps<{ guests: Guest[] }>()
 const emit = defineEmits<{ (e: 'edit-guest', id: string): void }>()
@@ -32,8 +33,7 @@ function onDragStart(event: DragEvent, guest: Guest) {
 }
 
 function groupColor(guest: Guest) {
-  if (!guest.groupId) return null
-  return groupStore.getById(guest.groupId)?.color ?? null
+  return getGroupColor(guest.groupId, groupStore.getById)
 }
 
 function onDoubleClick(guestId: string) {
@@ -91,8 +91,8 @@ function onDoubleClick(guestId: string) {
 <style scoped>
 .room-guest-sidebar {
   width: 240px;
-  background: #f9fafb;
-  border-right: 1px solid #efeff5;
+  background: var(--bg-muted);
+  border-right: 1px solid var(--border-soft);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -109,8 +109,8 @@ function onDoubleClick(guestId: string) {
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   margin-bottom: 6px;
   cursor: grab;
