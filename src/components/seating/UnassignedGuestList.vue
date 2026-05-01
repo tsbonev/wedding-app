@@ -201,4 +201,21 @@ function onDoubleClick(guestId: string) {
   border-top: 1px solid var(--border-soft);
   border-radius: 0 0 8px 8px;
 }
+@media (max-width: 767px) {
+  .unassigned-list {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: 100% !important;
+    max-height: 55vh;
+    min-height: 220px;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -6px 20px -8px rgba(0, 0, 0, 0.25);
+  }
+  .resize-handle {
+    display: none;
+  }
+}
 </style>

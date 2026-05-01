@@ -36,6 +36,11 @@ export function useStateSnapshot() {
       guests: toRaw(guestStore.guests),
       tables: toRaw(seatingStore.tables),
       rooms: toRaw(roomStore.rooms),
+      roomTypes: toRaw(roomStore.roomTypes),
+      roomGlobalCheckIn: toRaw(roomStore.globalCheckIn),
+      roomGlobalCheckOut: toRaw(roomStore.globalCheckOut),
+      roomPricingMode: toRaw(roomStore.roomPricingMode),
+      roomAveragePrice: toRaw(roomStore.averageRoomPrice),
       menuOptions: toRaw(menuStore.menuOptions),
       groups: toRaw(groupStore.groups),
       programme: toRaw(programmeStore.events),
@@ -92,6 +97,12 @@ export function useStateSnapshot() {
           guestStore.bulkReplace(snapshot.guests)
           seatingStore.bulkReplace(snapshot.tables)
           roomStore.bulkReplace(snapshot.rooms)
+          if (Array.isArray(snapshot.roomTypes) && snapshot.roomTypes.length > 0) {
+            roomStore.roomTypes = snapshot.roomTypes
+          }
+          roomStore.updateGlobalTimes(snapshot.roomGlobalCheckIn ?? null, snapshot.roomGlobalCheckOut ?? null)
+          roomStore.setRoomPricingMode(snapshot.roomPricingMode === 'average' ? 'average' : 'per-room')
+          roomStore.setAverageRoomPrice(typeof snapshot.roomAveragePrice === 'number' ? snapshot.roomAveragePrice : 0)
 
           resolve(null)
         } catch {

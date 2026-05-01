@@ -84,7 +84,7 @@ const sortedSeats = computed(() =>
 </script>
 
 <template>
-  <n-card size="small" style="width: 220px;">
+  <n-card size="small" class="table-card">
     <template #header>
       <div class="print-table-name">{{ localName }}</div>
       <n-input
@@ -186,6 +186,9 @@ const sortedSeats = computed(() =>
 </template>
 
 <style scoped>
+.table-card {
+  width: 220px;
+}
 .table-dims-edit-top {
   margin-bottom: 8px;
   padding-bottom: 8px;
@@ -245,6 +248,11 @@ const sortedSeats = computed(() =>
   }
   :deep(.n-input-wrapper) {
     padding: 0 !important;
+  }
+}
+@media (max-width: 767px) {
+  .table-card {
+    width: 100%;
   }
 }
 </style>

@@ -161,8 +161,9 @@ function seatIndStyle(index: number) {
 
 let startX = 0; let startY = 0; let origX = 0; let origY = 0
 
-function onMouseDown(event: MouseEvent) {
+function onPointerDown(event: PointerEvent) {
   if (configStore.isLinkingMode) return
+  if (event.pointerType === 'mouse' && event.button !== 0) return
   if ((event.target as HTMLElement).closest('.seat-token, button, .n-button, .corner-handle, .origin-dot')) return
 
   if (!isSelected.value) {
@@ -172,11 +173,14 @@ function onMouseDown(event: MouseEvent) {
 
   startX = event.clientX; startY = event.clientY
   origX = props.table.aerialPosX; origY = props.table.aerialPosY
+  const pointerId = event.pointerId
 
   const rect = el.value!.getBoundingClientRect()
+  el.value?.setPointerCapture(pointerId)
 
   let moved = false
-  function onMove(e: MouseEvent) {
+  function onMove(e: PointerEvent) {
+    if (e.pointerId !== pointerId) return
     if (!moved && Math.hypot(e.clientX - startX, e.clientY - startY) < 4) return
     moved = true
     
@@ -204,19 +208,24 @@ function onMouseDown(event: MouseEvent) {
 
     seatingStore.updateTable(props.table.id, { aerialPosX: newX, aerialPosY: newY })
   }
-  function onUp() {
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
+  function onUp(e: PointerEvent) {
+    if (e.pointerId !== pointerId) return
+    el.value?.releasePointerCapture(pointerId)
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    window.removeEventListener('pointercancel', onUp)
   }
 
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+  window.addEventListener('pointercancel', onUp)
 }
 
 // ── Corner drag-to-rotate (snaps to 45° on release) ─────────────────────────
 
-function onCornerMouseDown(event: MouseEvent) {
+function onCornerPointerDown(event: PointerEvent) {
   if (configStore.isLinkingMode) return
+  if (event.pointerType === 'mouse' && event.button !== 0) return
   event.stopPropagation()
   event.preventDefault()
 
@@ -226,22 +235,30 @@ function onCornerMouseDown(event: MouseEvent) {
   const startAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI)
   const startRotation = props.table.rotation
 
-  function onMove(e: MouseEvent) {
+  const pointerId = event.pointerId
+  el.value?.setPointerCapture(pointerId)
+
+  function onMove(e: PointerEvent) {
+    if (e.pointerId !== pointerId) return
     const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
     const delta = (angle - startAngle) // Rotation doesn't need zoom adjustment as it's angle based
     const raw = ((startRotation + delta) % 360 + 360) % 360
     seatingStore.updateTable(props.table.id, { rotation: raw })
   }
 
-  function onUp() {
+  function onUp(e: PointerEvent) {
+    if (e.pointerId !== pointerId) return
     const snapped = (Math.round(props.table.rotation / 45) * 45 + 360) % 360
     seatingStore.updateTable(props.table.id, { rotation: snapped })
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
+    el.value?.releasePointerCapture(pointerId)
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    window.removeEventListener('pointercancel', onUp)
   }
 
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+  window.addEventListener('pointercancel', onUp)
 }
 
 // ── Origin dot click: set seat numbering origin ───────────────────────────────
@@ -261,14 +278,14 @@ function setOrigin(corner: SeatOriginCorner) {
       top: table.aerialPosY + 'px',
       transform: `rotate(${table.rotation}deg)`
     }"
-    @mousedown="onMouseDown"
+    @pointerdown="onPointerDown"
   >
     <!-- Rotation corner handles (drag only) -->
     <template v-if="isSelected">
-      <div class="corner-handle tl" title="Drag to rotate" @mousedown="onCornerMouseDown" />
-      <div class="corner-handle tr" title="Drag to rotate" @mousedown="onCornerMouseDown" />
-      <div class="corner-handle bl" title="Drag to rotate" @mousedown="onCornerMouseDown" />
-      <div class="corner-handle br" title="Drag to rotate" @mousedown="onCornerMouseDown" />
+      <div class="corner-handle tl" title="Drag to rotate" @pointerdown="onCornerPointerDown" />
+      <div class="corner-handle tr" title="Drag to rotate" @pointerdown="onCornerPointerDown" />
+      <div class="corner-handle bl" title="Drag to rotate" @pointerdown="onCornerPointerDown" />
+      <div class="corner-handle br" title="Drag to rotate" @pointerdown="onCornerPointerDown" />
     </template>
 
     <!-- ── Rectangular ── -->
@@ -301,7 +318,7 @@ function setOrigin(corner: SeatOriginCorner) {
               v-for="c in CORNERS" :key="`origin-${c}`"
               class="origin-dot" :class="[c, { 'is-origin': table.seatOriginCorner === c }]"
               title="Click to start seat numbering here"
-              @mousedown.stop="setOrigin(c)"
+              @pointerdown.stop="setOrigin(c)"
             />
           </template>
           <div :style="{ transform: `rotate(${textRotation}deg)` }" class="text-container">
@@ -353,7 +370,7 @@ function setOrigin(corner: SeatOriginCorner) {
               v-for="c in CORNERS" :key="`origin-${c}`"
               class="origin-dot origin-dot-round" :class="[c, { 'is-origin': table.seatOriginCorner === c }]"
               title="Click to start seat numbering here"
-              @mousedown.stop="setOrigin(c)"
+              @pointerdown.stop="setOrigin(c)"
             />
           </template>
           <div :style="{ transform: `rotate(${textRotation}deg)` }" class="text-container">
@@ -388,6 +405,7 @@ function setOrigin(corner: SeatOriginCorner) {
   position: absolute;
   cursor: grab;
   user-select: none;
+  touch-action: none;
   transition: box-shadow 0.2s ease;
   z-index: 2;
 }

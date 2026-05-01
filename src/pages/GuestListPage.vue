@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, h, reactive } from 'vue'
+import { ref, computed, h, reactive, onMounted, onBeforeUnmount } from 'vue'
 import {
-  NButton, NSpace, NInput, NSelect, NDataTable, NTag, NPopconfirm, NText,
+  NButton, NSpace, NInput, NSelect, NDataTable, NTag, NPopconfirm, NText, NCard,
   NDropdown, NTooltip
 } from 'naive-ui'
 import type { DataTableColumns, SelectOption, DataTableRowKey } from 'naive-ui'
@@ -30,6 +30,7 @@ const i18n = useI18nStore()
 const showModal = ref(false)
 const showBulkModal = ref(false)
 const editingGuest = ref<Guest | undefined>(undefined)
+const isMobile = ref(window.innerWidth < 768)
 const search = ref('')
 const rsvpFilter = ref('')
 const groupFilter = ref('')
@@ -38,6 +39,19 @@ const tableFilter = ref('')
 const ageFilter = ref('')
 
 const checkedRowKeys = ref<DataTableRowKey[]>([])
+
+function handleViewportResize() {
+  isMobile.value = window.innerWidth < 768
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleViewportResize)
+  handleViewportResize()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleViewportResize)
+})
 
 const rsvpFilterOptions = computed(() => [
   { label: i18n.t('all_rsvp'), value: '' },
@@ -466,7 +480,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       <n-select v-model:value="ageFilter" :options="ageFilterOptions" />
 
       <n-dropdown
-        v-if="checkedRowKeys.length > 0"
+        v-if="!isMobile && checkedRowKeys.length > 0"
         :options="massEditOptions"
         :render-label="renderMassEditLabel"
         @select="handleMassEdit"
@@ -485,7 +499,7 @@ const columns = computed<DataTableColumns<Guest>>(() => [
     />
 
     <n-data-table
-      v-else
+      v-else-if="!isMobile"
       v-model:checked-row-keys="checkedRowKeys"
       :columns="columns"
       :data="filtered"
@@ -497,6 +511,92 @@ const columns = computed<DataTableColumns<Guest>>(() => [
       @update:page="(p) => { pagination.page = p }"
       @update:sorter="() => { pagination.page = 1 }"
     />
+
+    <div v-else class="guest-mobile-list">
+      <n-card v-for="guest in filtered" :key="guest.id" size="small" class="guest-mobile-card">
+        <template #header>
+          <div class="guest-mobile-header">
+            <div class="guest-mobile-name">
+              <span>{{ guest.firstName }} {{ guest.lastName }}</span>
+              <template v-if="guest.customEmoji">
+                <span :title="i18n.t('custom_emoji')">{{ guest.customEmoji }}</span>
+              </template>
+              <template v-else>
+                <span v-if="guest.isGroom" :title="i18n.t('groom')">🤵</span>
+                <span v-if="guest.isBride" :title="i18n.t('bride')">👰</span>
+                <span v-if="guest.isChild" :title="i18n.t('child')">👶</span>
+              </template>
+            </div>
+            <RSVPBadge :status="guest.rsvpStatus" />
+          </div>
+        </template>
+
+        <n-space vertical :size="10">
+          <div class="guest-mobile-row">
+            <n-text depth="3">{{ i18n.t('group') }}</n-text>
+            <n-select
+              :value="guest.groupId ?? ''"
+              :options="groupCellOptions"
+              :render-label="renderGroupLabel"
+              :render-label-single="renderGroupLabel"
+              filterable
+              size="small"
+              style="width: 100%;"
+              @update:value="(val) => guestStore.updateGuest(guest.id, { groupId: val || null })"
+            />
+          </div>
+          <div class="guest-mobile-row">
+            <n-text depth="3">RSVP</n-text>
+            <n-select
+              :value="guest.rsvpStatus"
+              :options="rsvpCellOptions"
+              size="small"
+              style="width: 100%;"
+              @update:value="(val) => guestStore.updateGuest(guest.id, { rsvpStatus: val as RSVPStatus })"
+            />
+          </div>
+          <div class="guest-mobile-row">
+            <n-text depth="3">{{ i18n.t('meals') }}</n-text>
+            <n-select
+              :value="guest.mealChoiceId ?? ''"
+              :options="mealCellOptions"
+              filterable
+              size="small"
+              style="width: 100%;"
+              @update:value="(val) => guestStore.updateGuest(guest.id, { mealChoiceId: (val as string) || null })"
+            />
+          </div>
+          <div class="guest-mobile-row">
+            <n-text depth="3">{{ i18n.t('table') }}</n-text>
+            <n-text>{{ getTableName(guest.tableId) }}</n-text>
+          </div>
+          <div class="guest-mobile-row">
+            <n-text depth="3">{{ i18n.t('room') }}</n-text>
+            <n-text>{{ getRoomName(guest.roomId) }}</n-text>
+          </div>
+          <div v-if="guest.notes?.trim()" class="guest-mobile-note">{{ i18n.t('notes') }}: {{ guest.notes }}</div>
+          <div v-if="guest.dietaryNotes?.trim()" class="guest-mobile-note">{{ i18n.t('dietary_notes') }}: {{ guest.dietaryNotes }}</div>
+        </n-space>
+
+        <template #action>
+          <n-space justify="end">
+            <n-button size="small" @click="openEdit(guest)">{{ i18n.t('edit') }}</n-button>
+            <n-popconfirm @positive-click="guestStore.deleteGuest(guest.id)">
+              <template #trigger>
+                <n-button size="small" type="error" ghost>{{ i18n.t('delete') }}</n-button>
+              </template>
+              {{ i18n.t('delete_confirm') }}
+            </n-popconfirm>
+          </n-space>
+        </template>
+      </n-card>
+      <EmptyState
+        v-if="filtered.length === 0"
+        icon="🔎"
+        :title="i18n.t('no_guests_yet')"
+        :description="i18n.t('search_name')"
+      />
+    </div>
 
     <GuestFormModal
       :show="showModal"
@@ -556,5 +656,36 @@ const columns = computed<DataTableColumns<Guest>>(() => [
 :deep(.n-data-table-sorter--asc),
 :deep(.n-data-table-sorter--desc) {
   opacity: 1;
+}
+.guest-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.guest-mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.guest-mobile-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  min-width: 0;
+}
+.guest-mobile-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.guest-mobile-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-muted);
+  border-radius: 6px;
+  padding: 6px 8px;
 }
 </style>

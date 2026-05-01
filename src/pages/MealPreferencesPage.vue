@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, reactive, ref } from 'vue'
+import { computed, h, reactive, ref, onMounted, onBeforeUnmount } from 'vue'
 import {
   NSpace, NCard, NProgress, NText, NDataTable, NSelect,
   NTag, NPopover, NInput, NButton, NDivider, NInputGroup,
@@ -22,6 +22,20 @@ const guestStore = useGuestStore()
 const menuStore = useMenuStore()
 const groupStore = useGroupStore()
 const i18n = useI18nStore()
+const isMobile = ref(window.innerWidth < 768)
+
+function handleViewportResize() {
+  isMobile.value = window.innerWidth < 768
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleViewportResize)
+  handleViewportResize()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleViewportResize)
+})
 
 // Meal management
 const newOptionLabel = ref('')
@@ -316,7 +330,7 @@ const columns = computed((): DataTableColumns<Guest> => [
           clearable
         />
         <n-dropdown
-          v-if="checkedRowKeys.length > 0"
+          v-if="!isMobile && checkedRowKeys.length > 0"
           :options="massEditOptions"
           :render-label="renderMassEditLabel"
           @select="handleMassEdit"
@@ -328,6 +342,7 @@ const columns = computed((): DataTableColumns<Guest> => [
       </div>
 
       <n-data-table
+        v-if="!isMobile"
         :columns="columns"
         :data="filteredGuests"
         v-model:checked-row-keys="checkedRowKeys"
@@ -339,6 +354,58 @@ const columns = computed((): DataTableColumns<Guest> => [
         @update:page="(p) => { pagination.page = p }"
         @update:sorter="() => { pagination.page = 1 }"
       />
+
+      <div v-else class="meal-mobile-list">
+        <n-card v-for="guest in filteredGuests" :key="guest.id" size="small" class="meal-mobile-card">
+          <template #header>
+            <div class="meal-mobile-header">
+              <div class="meal-mobile-name">{{ guest.firstName }} {{ guest.lastName }}</div>
+              <RSVPBadge :status="guest.rsvpStatus" />
+            </div>
+          </template>
+          <n-space vertical :size="10">
+            <div v-if="guest.groupId" class="meal-mobile-row">
+              <n-text depth="3">{{ i18n.t('group') }}</n-text>
+              <n-tag
+                v-if="groupStore.getById(guest.groupId)"
+                :color="{ color: groupStore.getById(guest.groupId)!.color, textColor: '#fff' }"
+                bordered
+                size="small"
+              >
+                {{ groupStore.getById(guest.groupId)!.name }}
+              </n-tag>
+              <n-text v-else>—</n-text>
+            </div>
+            <div class="meal-mobile-row">
+              <n-text depth="3">{{ i18n.t('meals') }}</n-text>
+              <n-select
+                :value="guest.mealChoiceId"
+                :options="menuStore.menuOptions.map((o: MenuItem) => ({ label: `${o.emoji} ${o.label}`, value: o.id }))"
+                clearable
+                :placeholder="i18n.t('select_meal')"
+                style="width: 100%;"
+                @update:value="(val) => guestStore.updateGuest(guest.id, { mealChoiceId: (val as string) || null })"
+              />
+            </div>
+            <div>
+              <n-text depth="3">{{ i18n.t('dietary_notes') }}</n-text>
+              <n-input
+                :value="guest.dietaryNotes"
+                :placeholder="i18n.t('notes')"
+                size="small"
+                style="margin-top: 6px;"
+                @update:value="(val) => guestStore.updateGuest(guest.id, { dietaryNotes: val })"
+              />
+            </div>
+          </n-space>
+        </n-card>
+        <EmptyState
+          v-if="filteredGuests.length === 0"
+          icon="🔎"
+          :title="i18n.t('no_guests_yet')"
+          :description="i18n.t('search_guests')"
+        />
+      </div>
     </n-space>
   </div>
 </template>
@@ -385,5 +452,25 @@ const columns = computed((): DataTableColumns<Guest> => [
 :deep(.n-data-table-sorter--asc),
 :deep(.n-data-table-sorter--desc) {
   opacity: 1;
+}
+.meal-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.meal-mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.meal-mobile-name {
+  font-weight: 600;
+}
+.meal-mobile-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
 }
 </style>

@@ -115,6 +115,11 @@ export interface WeddingSnapshot {
   guests: Guest[]
   tables: Table[]
   rooms: Room[]
+  roomTypes?: string[]
+  roomGlobalCheckIn?: string | null
+  roomGlobalCheckOut?: string | null
+  roomPricingMode?: 'per-room' | 'average'
+  roomAveragePrice?: number
   menuOptions: MenuItem[]
   groups: GuestGroup[]
   programme: ProgrammeEvent[]

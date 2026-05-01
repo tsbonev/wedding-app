@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { NButton, NTabs, NTabPane, NRadioGroup, NRadioButton, NSwitch, NButtonGroup, useMessage, NConfigProvider } from 'naive-ui'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
@@ -30,6 +30,32 @@ const unassigned = computed(() => guestStore.unassignedGuests)
 const sortedTables = computed(() =>
   [...seatingStore.tables].sort((a, b) => a.name.localeCompare(b.name))
 )
+const isMobile = ref(window.innerWidth < 768)
+const hasAutoClosedMobileSidebar = ref(false)
+
+function handleViewportResize() {
+  isMobile.value = window.innerWidth < 768
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleViewportResize)
+  handleViewportResize()
+  if (isMobile.value && configStore.isGuestSidebarOpen && !hasAutoClosedMobileSidebar.value) {
+    configStore.isGuestSidebarOpen = false
+    hasAutoClosedMobileSidebar.value = true
+  }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleViewportResize)
+})
+
+watch(isMobile, (mobile) => {
+  if (mobile && configStore.isGuestSidebarOpen && !hasAutoClosedMobileSidebar.value) {
+    configStore.isGuestSidebarOpen = false
+    hasAutoClosedMobileSidebar.value = true
+  }
+})
 
 watch(() => seatingStore.tables, () => {
   if (configStore.seatingActiveTab === 'floorplan') {
@@ -50,7 +76,7 @@ function handleEditGuest(guestId: string) {
   }
 }
 
-function onMouseMove(event: MouseEvent | DragEvent) {
+function onMouseMove(event: MouseEvent | DragEvent | PointerEvent) {
   const canvas = document.querySelector('.seating-canvas')
   if (canvas) {
     const rect = canvas.getBoundingClientRect()
@@ -63,28 +89,36 @@ function onMouseMove(event: MouseEvent | DragEvent) {
 
 const viewportEl = ref<HTMLElement | null>(null)
 
-function onCanvasMouseDown(event: MouseEvent) {
-  // Only pan if left-clicking directly on the canvas (not on a table)
-  if (event.button !== 0) return
-  if ((event.target as HTMLElement).closest('.aerial-wrapper, .relation-arcs-container')) return
+function onCanvasPointerDown(event: PointerEvent) {
+  if (event.pointerType === 'mouse' && event.button !== 0) return
+  if ((event.target as HTMLElement).closest('.aerial-wrapper, .relation-arcs-container, .canvas-controls, button, .n-button')) return
+  if (!viewportEl.value) return
 
   const startX = event.clientX
   const startY = event.clientY
   const startPanX = configStore.panX
   const startPanY = configStore.panY
+  const pointerId = event.pointerId
 
-  function onMouseMove(e: MouseEvent) {
+  viewportEl.value.setPointerCapture(pointerId)
+
+  function onMove(e: PointerEvent) {
+    if (e.pointerId !== pointerId) return
     configStore.panX = startPanX + (e.clientX - startX)
     configStore.panY = startPanY + (e.clientY - startY)
   }
 
-  function onMouseUp() {
-    window.removeEventListener('mousemove', onMouseMove)
-    window.removeEventListener('mouseup', onMouseUp)
+  function onUp(e: PointerEvent) {
+    if (e.pointerId !== pointerId) return
+    viewportEl.value?.releasePointerCapture(pointerId)
+    viewportEl.value?.removeEventListener('pointermove', onMove)
+    viewportEl.value?.removeEventListener('pointerup', onUp)
+    viewportEl.value?.removeEventListener('pointercancel', onUp)
   }
 
-  window.addEventListener('mousemove', onMouseMove)
-  window.addEventListener('mouseup', onMouseUp)
+  viewportEl.value.addEventListener('pointermove', onMove)
+  viewportEl.value.addEventListener('pointerup', onUp)
+  viewportEl.value.addEventListener('pointercancel', onUp)
 }
 
 function onCanvasWheel(event: WheelEvent) {
@@ -237,7 +271,7 @@ async function handlePrint() {
 </script>
 
 <template>
-  <div @mousemove="onMouseMove" @dragover="onMouseMove">
+  <div @mousemove="onMouseMove" @pointermove="onMouseMove" @dragover="onMouseMove">
     <h2 class="no-print" style="margin-top: 10px;">{{ i18n.t('seating') }}</h2>
       <!-- Print-only header -->
       <div class="print-header">
@@ -246,11 +280,57 @@ async function handlePrint() {
           <span v-if="configStore.weddingDate"><strong>{{ i18n.t('date') }}:</strong> {{ configStore.weddingDate }}</span>
           <span v-if="configStore.venue"><strong>{{ i18n.t('venue_label') }}:</strong> {{ configStore.venue }}</span>
         </div>
+	      </div>
+
+    <div v-if="isMobile" class="mobile-seating-controls no-print">
+      <n-radio-group v-model:value="configStore.seatingActiveTab" size="small">
+        <n-radio-button value="tables">{{ i18n.t('table') }}</n-radio-button>
+        <n-radio-button value="floorplan">{{ i18n.t('floor_plan') }}</n-radio-button>
+      </n-radio-group>
+      <div class="mobile-seating-actions">
+        <n-button
+          size="small"
+          :type="configStore.isGuestSidebarOpen ? 'primary' : 'default'"
+          @click="configStore.isGuestSidebarOpen = !configStore.isGuestSidebarOpen"
+        >
+          {{ configStore.isGuestSidebarOpen ? i18n.t('hide') : i18n.t('show') }} {{ i18n.t('unassigned') }}
+        </n-button>
+        <n-button
+          v-if="configStore.seatingActiveTab === 'tables' || configStore.seatingActiveTab === 'floorplan'"
+          type="primary"
+          size="small"
+          @click="showAddModal = true"
+        >
+          + {{ i18n.t('add_table') }}
+        </n-button>
+        <n-button
+          v-if="configStore.seatingActiveTab === 'tables' || configStore.seatingActiveTab === 'floorplan'"
+          type="info"
+          size="small"
+          secondary
+          @click="handlePrint"
+        >
+          🖨️ {{ configStore.seatingActiveTab === 'floorplan' ? i18n.t('export_pdf') : i18n.t('print') }}
+        </n-button>
       </div>
+      <div v-if="configStore.seatingActiveTab === 'floorplan'" class="mobile-linking-controls">
+        <n-button
+          :type="configStore.isLinkingMode ? 'primary' : 'default'"
+          size="small"
+          @click="configStore.isLinkingMode = !configStore.isLinkingMode"
+        >
+          {{ configStore.isLinkingMode ? i18n.t('disable') : i18n.t('enable') }} {{ i18n.t('linking_mode') }}
+        </n-button>
+        <n-radio-group v-if="configStore.isLinkingMode" v-model:value="configStore.linkingModeType" size="small">
+          <n-radio-button value="partner">{{ i18n.t('partner_mode') }}</n-radio-button>
+          <n-radio-button value="child">{{ i18n.t('child_mode') }}</n-radio-button>
+        </n-radio-group>
+      </div>
+    </div>
 
     <n-tabs v-model:value="configStore.seatingActiveTab" type="line">
       <template #suffix>
-        <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="seating-tab-suffix">
           <n-button 
             v-if="configStore.seatingActiveTab === 'tables'"
             size="small" 
@@ -315,7 +395,7 @@ async function handlePrint() {
       <n-tab-pane name="floorplan" :tab="i18n.t('floor_plan')">
         <div style="display: flex; flex-direction: column; gap: 16px;">
           <div class="floorplan-toolbar">
-            <div style="display: flex; gap: 8px; align-items: center;">
+            <div v-if="!isMobile" style="display: flex; gap: 8px; align-items: center;">
               <n-button
                 :type="configStore.isLinkingMode ? 'primary' : 'default'"
                 size="small"
@@ -367,7 +447,7 @@ async function handlePrint() {
               <div 
                 ref="viewportEl"
                 class="canvas-viewport"
-                @mousedown="onCanvasMouseDown"
+                @pointerdown="onCanvasPointerDown"
                 @wheel="onCanvasWheel"
               >
                 <div 
@@ -578,7 +658,41 @@ async function handlePrint() {
 .toolbar-text {
   color: var(--text-subtle);
 }
+.seating-tab-suffix {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 @media (max-width: 767px) {
+  .tables-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :deep(.n-tabs-nav) {
+    display: none;
+  }
+  .mobile-seating-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .mobile-seating-actions,
+  .mobile-linking-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .seating-tab-suffix {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  :deep(.n-tabs-nav__suffix) {
+    width: 100%;
+  }
   .toolbar-section {
     border-left: none;
     padding-left: 0;
@@ -595,6 +709,7 @@ async function handlePrint() {
   overflow: hidden;
   cursor: grab;
   user-select: none;
+  touch-action: none;
 }
 .canvas-viewport:active {
   cursor: grabbing;
