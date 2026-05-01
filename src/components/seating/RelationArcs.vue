@@ -20,6 +20,22 @@ const tooltipContent = ref('')
 const guestPositions = ref<Map<string, { x: number; y: number; tableId: string | null; rotation: number }>>(new Map())
 const maskRects = ref<{ x: number; y: number; width: number; height: number }[]>([])
 
+function addMaskRect(
+  rect: DOMRect,
+  canvasRect: DOMRect,
+  zoom: number,
+  target: { x: number; y: number; width: number; height: number }[],
+  padding = 2
+) {
+  if (rect.width <= 0 || rect.height <= 0) return
+  target.push({
+    x: (rect.left - canvasRect.left) / zoom - padding,
+    y: (rect.top - canvasRect.top) / zoom - padding,
+    width: rect.width / zoom + padding * 2,
+    height: rect.height / zoom + padding * 2
+  })
+}
+
 function updatePositions() {
   const newPositions = new Map<string, { x: number; y: number; tableId: string | null; rotation: number }>()
   const newMaskRects: { x: number; y: number; width: number; height: number }[] = []
@@ -48,23 +64,13 @@ function updatePositions() {
     }
   })
 
-  // 2. Text elements for masking
-  const textSelectors = ['.initials', '.tname']
-  textSelectors.forEach(selector => {
+  // 2. Text and emoji overlays for masking (so arcs don't cross visible labels/icons)
+  const overlaySelectors = ['.initials', '.tname', '.special-role-crown', '.adjoining-child-badge']
+  overlaySelectors.forEach(selector => {
     const elements = document.querySelectorAll(selector)
     elements.forEach(el => {
       const rect = el.getBoundingClientRect()
-      // Only include if it has dimensions (some might be hidden)
-      if (rect.width > 0 && rect.height > 0) {
-        // Add a small padding to the mask for better legibility
-        const padding = 2
-        newMaskRects.push({
-          x: (rect.left - canvasRect.left) / zoom - padding,
-          y: (rect.top - canvasRect.top) / zoom - padding,
-          width: rect.width / zoom + padding * 2,
-          height: rect.height / zoom + padding * 2
-        })
-      }
+      addMaskRect(rect, canvasRect, zoom, newMaskRects)
     })
   })
 
@@ -380,7 +386,7 @@ function createArc(id1: string, id2: string, pos1: any, pos2: any) {
           stroke-dasharray="6 3"
           class="arc-path"
           :class="{ 'is-hovered': hoveredArcId === arc.id, 'has-hover': hoveredArcId !== null && hoveredArcId !== arc.id }"
-          :mask="hoveredArcId === arc.id ? undefined : 'url(#relation-mask)'"
+          mask="url(#relation-mask)"
         />
       </g>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { NGrid, NGi, NCard, NSpace, NButton, NTag, NPopconfirm, NText, NTabs, NTabPane, NForm, NFormItem } from 'naive-ui'
+import { NGrid, NGi, NCard, NSpace, NButton, NTag, NPopconfirm, NText, NTabs, NTabPane, NForm, NFormItem, NInputNumber, NRadioGroup, NRadioButton } from 'naive-ui'
 import { useRoomStore } from '@/stores/useRoomStore'
 import { useGuestStore } from '@/stores/useGuestStore'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -42,6 +42,20 @@ const globalCheckOutValue = computed({
   }
 })
 
+const averageRoomPriceValue = computed({
+  get: () => roomStore.averageRoomPrice,
+  set: (val: number | null) => {
+    roomStore.setAverageRoomPrice(val ?? 0)
+  }
+})
+
+const roomPricingModeValue = computed({
+  get: () => roomStore.roomPricingMode,
+  set: (val: 'per-room' | 'average') => {
+    roomStore.setRoomPricingMode(val)
+  }
+})
+
 function openAdd() { editingRoom.value = undefined; showRoomModal.value = true }
 function openEdit(r: Room) { editingRoom.value = r; showRoomModal.value = true }
 
@@ -80,6 +94,13 @@ function getRoomCheckOut(room: Room) {
   return room.isCustomTimes ? room.checkOut : roomStore.globalCheckOut
 }
 
+function formatMoney(value: number | null | undefined) {
+  return (typeof value === 'number' ? value : 0).toLocaleString(i18n.locale === 'bg' ? 'bg-BG' : 'en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 function handlePrint() {
   window.print()
 }
@@ -110,7 +131,7 @@ function handlePrint() {
         <n-card v-if="roomStore.rooms.length > 0" size="small" style="margin-bottom: 16px;" class="no-print">
           <n-form inline :show-feedback="false" label-placement="left">
             <n-space wrap>
-      <n-form-item :label="i18n.t('global_check_in')">
+              <n-form-item :label="i18n.t('global_check_in')">
                 <BetterDateTimePicker
                   v-model:value="globalCheckInValue"
                   :placeholder="i18n.t('placeholder_date')"
@@ -121,6 +142,15 @@ function handlePrint() {
                   v-model:value="globalCheckOutValue"
                   :placeholder="i18n.t('placeholder_date')"
                 />
+              </n-form-item>
+              <n-form-item :label="i18n.t('room_pricing_mode')">
+                <n-radio-group v-model:value="roomPricingModeValue" size="small">
+                  <n-radio-button value="per-room">{{ i18n.t('per_room') }}</n-radio-button>
+                  <n-radio-button value="average">{{ i18n.t('average') }}</n-radio-button>
+                </n-radio-group>
+              </n-form-item>
+              <n-form-item :label="i18n.t('average_room_price')">
+                <n-input-number v-model:value="averageRoomPriceValue" :min="0" :precision="2" style="width: 150px;" />
               </n-form-item>
             </n-space>
           </n-form>
@@ -146,6 +176,9 @@ function handlePrint() {
 
               <n-space vertical :size="4">
                 <n-text depth="3" style="font-size: 12px;">{{ formatRoomType(room.type) }}</n-text>
+                <n-text depth="3" style="font-size: 12px;">
+                  {{ i18n.t('room_price') }}: {{ formatMoney(room.price) }}
+                </n-text>
                 <div v-if="getRoomCheckIn(room) || getRoomCheckOut(room)">
                   <n-text depth="3" style="font-size: 11px;">
                     {{ getRoomCheckIn(room) }} → {{ getRoomCheckOut(room) }}

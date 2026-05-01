@@ -3,7 +3,7 @@ import { computed, h, reactive, ref } from 'vue'
 import {
   NSpace, NCard, NProgress, NText, NDataTable, NSelect,
   NTag, NPopover, NInput, NButton, NDivider, NInputGroup,
-  NDropdown, NTooltip
+  NDropdown, NTooltip, NInputNumber
 } from 'naive-ui'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
 import EmojiPicker from 'vue3-emoji-picker'
@@ -26,29 +26,34 @@ const i18n = useI18nStore()
 // Meal management
 const newOptionLabel = ref('')
 const newOptionEmoji = ref('🍷')
+const newOptionPrice = ref(0)
 
 function addOption() {
   if (!newOptionLabel.value.trim()) return
-  menuStore.addOption(newOptionLabel.value.trim(), newOptionEmoji.value)
+  menuStore.addOption(newOptionLabel.value.trim(), newOptionEmoji.value, newOptionPrice.value || 0)
   newOptionLabel.value = ''
   newOptionEmoji.value = '🍷'
+  newOptionPrice.value = 0
 }
 
 const editingMealId = ref<string | null>(null)
 const editingMealLabel = ref('')
 const editingMealEmoji = ref('')
+const editingMealPrice = ref(0)
 
 function startEditMeal(opt: MenuItem) {
   editingMealId.value = opt.id
   editingMealLabel.value = opt.label
   editingMealEmoji.value = opt.emoji
+  editingMealPrice.value = opt.price ?? 0
 }
 
 function saveEditMeal(id: string) {
   if (editingMealLabel.value.trim()) {
     menuStore.updateOption(id, { 
       label: editingMealLabel.value.trim(),
-      emoji: editingMealEmoji.value
+      emoji: editingMealEmoji.value,
+      price: editingMealPrice.value || 0,
     })
   }
   editingMealId.value = null
@@ -102,17 +107,27 @@ function renderGroupLabel(option: any) {
   })
 }
 
-const confirmedGuests = computed(() => guestStore.guests.filter((g) => g.rsvpStatus === 'confirmed'))
+const activeGuests = computed(() => guestStore.guests.filter((g) => g.rsvpStatus !== 'declined'))
 
 const mealCounts = computed(() => {
   const counts: Record<string, number> = {}
   for (const opt of menuStore.menuOptions) counts[opt.id] = 0
   counts['none'] = 0
-  for (const g of confirmedGuests.value) {
+  for (const g of activeGuests.value) {
     if (g.mealChoiceId && counts[g.mealChoiceId] !== undefined) counts[g.mealChoiceId]++
     else counts['none']++
   }
   return counts
+})
+
+const totalMealCost = computed(() => {
+  let sum = 0
+  for (const g of activeGuests.value) {
+    if (!g.mealChoiceId) continue
+    const option = menuStore.menuOptions.find((o) => o.id === g.mealChoiceId)
+    sum += option?.price ?? 0
+  }
+  return sum
 })
 
 const { massEditOptions, renderMassEditLabel, handleMassEdit } = useMassEdit(checkedRowKeys)
@@ -230,6 +245,10 @@ const columns = computed((): DataTableColumns<Guest> => [
                     :placeholder="i18n.t('rename_meal')"
                   />
                 </n-input-group>
+                <div class="n-form-item-wrapper" style="width: 180px; margin: 0">
+                  <span class="field-label">{{ i18n.t('price') }}</span>
+                  <n-input-number v-model:value="editingMealPrice" :min="0" :precision="2" />
+                </div>
                 <n-button size="small" type="primary" @click="saveEditMeal(opt.id)">{{ i18n.t('save') }}</n-button>
               </div>
             </n-popover>
@@ -256,6 +275,10 @@ const columns = computed((): DataTableColumns<Guest> => [
             <span class="field-label">{{ i18n.t('label') }}</span>
             <n-input v-model:value="newOptionLabel" :placeholder="i18n.t('label')" @keyup.enter="addOption" />
           </div>
+          <div class="n-form-item-wrapper" style="width: 180px; margin: 0">
+            <span class="field-label">{{ i18n.t('price') }}</span>
+            <n-input-number v-model:value="newOptionPrice" :min="0" :precision="2" />
+          </div>
           <n-button type="primary" :disabled="!newOptionLabel.trim()" @click="addOption">{{ i18n.t('add') }}</n-button>
         </n-space>
       </n-card>
@@ -263,14 +286,17 @@ const columns = computed((): DataTableColumns<Guest> => [
       <n-card :title="i18n.t('summary')">
         <n-space vertical>
           <div v-for="opt in menuStore.menuOptions" :key="opt.id">
-            <n-text>{{ opt.emoji }} {{ opt.label }}: {{ mealCounts[opt.id] }}</n-text>
+            <n-text>{{ opt.emoji }} {{ opt.label }} ({{ (opt.price ?? 0).toFixed(2) }}): {{ mealCounts[opt.id] }}</n-text>
             <n-progress
               type="line"
-              :percentage="confirmedGuests.length ? Math.round((mealCounts[opt.id] / confirmedGuests.length) * 100) : 0"
+              :percentage="activeGuests.length ? Math.round((mealCounts[opt.id] / activeGuests.length) * 100) : 0"
             />
           </div>
           <div>
             <n-text depth="3">{{ i18n.t('no_selection') }}: {{ mealCounts['none'] }}</n-text>
+          </div>
+          <div>
+            <n-text strong>{{ i18n.t('total_meal_cost') }}: {{ totalMealCost.toFixed(2) }}</n-text>
           </div>
         </n-space>
       </n-card>

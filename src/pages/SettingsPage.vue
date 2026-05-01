@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import {
-  NCard, NForm, NFormItem, NInput, NButton, NDivider, NText, NPopconfirm, NDatePicker
+  NCard, NForm, NFormItem, NInput, NButton, NDivider, NText, NPopconfirm, NDatePicker, NCheckbox, NSelect
 } from 'naive-ui'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import { useGroupStore } from '@/stores/useGroupStore'
@@ -53,6 +53,11 @@ const weddingDateValue = computed({
     config.weddingDate = val ? new Date(val).toISOString() : null
   }
 })
+
+const currencyOptions = computed(() => [
+  { label: `€ ${i18n.t('currency_eur')}`, value: 'EUR' },
+  { label: `$ ${i18n.t('currency_usd')}`, value: 'USD' },
+])
 </script>
 
 <template>
@@ -76,6 +81,14 @@ const weddingDateValue = computed({
         </n-form-item>
         <n-form-item :label="i18n.t('venue')">
           <n-input v-model:value="config.venue" :placeholder="i18n.t('venue')" />
+        </n-form-item>
+        <n-form-item :label="i18n.t('currency')">
+          <n-select v-model:value="config.currency" :options="currencyOptions" />
+        </n-form-item>
+        <n-form-item :label="i18n.t('budget_visibility')">
+          <n-checkbox v-model:checked="config.showBudgetOnDashboard">
+            {{ i18n.t('show_budget_prices_dashboard') }}
+          </n-checkbox>
         </n-form-item>
       </n-form>
       <n-text depth="3" style="font-size: 12px;">{{ i18n.t('saved_automatically') }}</n-text>

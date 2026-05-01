@@ -24,6 +24,7 @@ const routeTitleMap: Record<string, string> = {
   '/programme': 'programme',
   '/guests': 'guests',
   '/seating': 'seating',
+  '/budget': 'budget',
   '/meals': 'meals',
   '/rooms': 'rooms',
   '/settings': 'settings',

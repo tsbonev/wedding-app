@@ -29,6 +29,7 @@ const form = ref({
   number: props.initial?.number ?? '',
   type: props.initial?.type ? i18n.t(props.initial.type) : '',
   capacity: props.initial?.capacity ?? 2,
+  price: props.initial?.price ?? 0,
   checkIn: null as string | null,
   checkOut: null as string | null,
   isCustomTimes: props.initial?.isCustomTimes ?? false,
@@ -114,6 +115,9 @@ function handleSubmit() {
         </n-form-item>
         <n-form-item :label="i18n.t('capacity')" style="min-width: 100px; flex: 1" :show-feedback="false">
           <n-input-number v-model:value="form.capacity" :min="1" :max="10" style="width: 100%" />
+        </n-form-item>
+        <n-form-item :label="i18n.t('room_price')" style="min-width: 130px; flex: 1" :show-feedback="false">
+          <n-input-number v-model:value="form.price" :min="0" :precision="2" style="width: 100%" />
         </n-form-item>
       </n-space>
 

@@ -7,6 +7,7 @@ export const useAppConfigStore = defineStore('config', () => {
   const coupleName = ref('')
   const weddingDate = ref<string | null>(null)
   const venue = ref('')
+  const currency = ref<'EUR' | 'USD'>('EUR')
   const guestSidebarWidth = ref(280)
   const isGuestSidebarOpen = ref(true)
   const seatingActiveTab = ref<'tables' | 'floorplan'>('tables')
@@ -25,6 +26,7 @@ export const useAppConfigStore = defineStore('config', () => {
   const panX = ref(0)
   const panY = ref(0)
   const isDarkMode = ref(false)
+  const showBudgetOnDashboard = ref(true)
   const isExporting = ref(false)
 
   function fitCanvasToTables(tables: Table[]) {
@@ -75,6 +77,7 @@ export const useAppConfigStore = defineStore('config', () => {
     coupleName,
     weddingDate,
     venue,
+    currency,
     guestSidebarWidth,
     isGuestSidebarOpen,
     seatingActiveTab,
@@ -92,6 +95,7 @@ export const useAppConfigStore = defineStore('config', () => {
     panX,
     panY,
     isDarkMode,
+    showBudgetOnDashboard,
     isExporting,
     fitCanvasToTables
   }

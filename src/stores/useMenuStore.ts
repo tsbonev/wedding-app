@@ -4,13 +4,13 @@ import type { MenuItem } from '@/types'
 
 export const useMenuStore = defineStore('menu', () => {
   const menuOptions = ref<MenuItem[]>([
-    { id: 'chicken', label: 'Chicken', emoji: '🍗' },
-    { id: 'fish', label: 'Fish', emoji: '🐟' },
-    { id: 'vegan', label: 'Vegan', emoji: '🥦' },
+    { id: 'chicken', label: 'Chicken', emoji: '🍗', price: 0 },
+    { id: 'fish', label: 'Fish', emoji: '🐟', price: 0 },
+    { id: 'vegan', label: 'Vegan', emoji: '🥦', price: 0 },
   ])
 
-  function addOption(label: string, emoji: string) {
-    menuOptions.value.push({ id: crypto.randomUUID(), label, emoji })
+  function addOption(label: string, emoji: string, price = 0) {
+    menuOptions.value.push({ id: crypto.randomUUID(), label, emoji, price })
   }
 
   function removeOption(id: string) {
@@ -22,11 +22,15 @@ export const useMenuStore = defineStore('menu', () => {
     if (opt) {
       if (updates.label !== undefined) opt.label = updates.label
       if (updates.emoji !== undefined) opt.emoji = updates.emoji
+      if (updates.price !== undefined) opt.price = updates.price
     }
   }
 
   function bulkReplace(newOptions: MenuItem[]) {
-    menuOptions.value = newOptions
+    menuOptions.value = newOptions.map((opt) => ({
+      ...opt,
+      price: typeof opt.price === 'number' ? opt.price : 0,
+    }))
   }
 
   return { menuOptions, addOption, removeOption, updateOption, bulkReplace }

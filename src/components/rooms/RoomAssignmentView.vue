@@ -69,6 +69,13 @@ function getRoomCheckOut(room: Room) {
   return room.isCustomTimes ? room.checkOut : roomStore.globalCheckOut
 }
 
+function formatMoney(value: number | null | undefined) {
+  return (typeof value === 'number' ? value : 0).toLocaleString(i18n.locale === 'bg' ? 'bg-BG' : 'en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 const emit = defineEmits<{ 
   (e: 'edit-guest', id: string): void;
   (e: 'assign-guests', room: Room): void;
@@ -112,6 +119,9 @@ const emit = defineEmits<{
 
                   <n-space vertical size="small">
                     <n-text depth="3" style="font-size: 12px;">{{ formatRoomType(room.type) }}</n-text>
+                    <n-text depth="3" style="font-size: 12px;">
+                      {{ i18n.t('room_price') }}: {{ formatMoney(room.price) }}
+                    </n-text>
                     <div v-if="getRoomCheckIn(room) || getRoomCheckOut(room)">
                       <n-text depth="3" style="font-size: 11px;">
                         {{ getRoomCheckIn(room) }} → {{ getRoomCheckOut(room) }}

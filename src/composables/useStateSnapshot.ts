@@ -6,6 +6,7 @@ import { useRoomStore } from '@/stores/useRoomStore'
 import { useMenuStore } from '@/stores/useMenuStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useProgrammeStore } from '@/stores/useProgrammeStore'
+import { useBudgetStore } from '@/stores/useBudgetStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 
 export function useStateSnapshot() {
@@ -16,13 +17,16 @@ export function useStateSnapshot() {
     const menuStore = useMenuStore()
     const groupStore = useGroupStore()
     const programmeStore = useProgrammeStore()
+    const budgetStore = useBudgetStore()
     const configStore = useAppConfigStore()
 
     const config: AppConfig = {
       coupleName: toRaw(configStore.coupleName),
       weddingDate: toRaw(configStore.weddingDate),
       venue: toRaw(configStore.venue),
+      currency: toRaw(configStore.currency),
       guestSidebarWidth: toRaw(configStore.guestSidebarWidth),
+      showBudgetOnDashboard: toRaw(configStore.showBudgetOnDashboard),
     }
 
     const snapshot: WeddingSnapshot = {
@@ -35,6 +39,7 @@ export function useStateSnapshot() {
       menuOptions: toRaw(menuStore.menuOptions),
       groups: toRaw(groupStore.groups),
       programme: toRaw(programmeStore.events),
+      budgetExpenses: toRaw(budgetStore.expenses),
     }
 
     const json = JSON.stringify(snapshot, null, 2)
@@ -67,17 +72,23 @@ export function useStateSnapshot() {
           const menuStore = useMenuStore()
           const groupStore = useGroupStore()
           const programmeStore = useProgrammeStore()
+          const budgetStore = useBudgetStore()
           const configStore = useAppConfigStore()
 
           if (snapshot.config) {
             configStore.coupleName = snapshot.config.coupleName ?? ''
             configStore.weddingDate = snapshot.config.weddingDate ?? null
             configStore.venue = snapshot.config.venue ?? ''
+            configStore.currency = snapshot.config.currency === 'USD' ? 'USD' : 'EUR'
             if (snapshot.config.guestSidebarWidth) configStore.guestSidebarWidth = snapshot.config.guestSidebarWidth
+            if (typeof snapshot.config.showBudgetOnDashboard === 'boolean') {
+              configStore.showBudgetOnDashboard = snapshot.config.showBudgetOnDashboard
+            }
           }
           menuStore.bulkReplace(snapshot.menuOptions)
           if (snapshot.groups) groupStore.bulkReplace(snapshot.groups)
           if (snapshot.programme) programmeStore.setEvents(snapshot.programme)
+          budgetStore.bulkReplace(snapshot.budgetExpenses ?? [])
           guestStore.bulkReplace(snapshot.guests)
           seatingStore.bulkReplace(snapshot.tables)
           roomStore.bulkReplace(snapshot.rooms)

@@ -58,6 +58,7 @@ export interface Room {
   number: string
   type: string
   capacity: number
+  price: number
   guestIds: string[]
   checkIn: string | null
   checkOut: string | null
@@ -69,6 +70,7 @@ export interface MenuItem {
   id: string
   label: string
   emoji: string
+  price?: number
 }
 
 export interface ProgrammeEvent {
@@ -78,11 +80,32 @@ export interface ProgrammeEvent {
   description: string
 }
 
+export interface BudgetExpense {
+  id: string
+  name: string
+  iconEmoji?: string | null
+  type?: 'manual' | 'plates' | 'rooms'
+  plannedAmount: number
+  paidAmount: number
+  finalAmount: number | null
+  adultPlatePrice?: number
+  childPlatePrice?: number
+  platePricingMode?: 'adult-child' | 'meal-prices'
+  linkToSeatedGuests?: boolean
+  manualAdultCount?: number
+  manualChildCount?: number
+  roomPricingMode?: 'per-room' | 'average'
+  roomsOccupancyMode?: 'all' | 'occupied'
+  averageRoomPriceOverride?: number
+}
+
 export interface AppConfig {
   coupleName: string
   weddingDate: string | null
   venue: string
+  currency?: 'EUR' | 'USD'
   guestSidebarWidth?: number
+  showBudgetOnDashboard?: boolean
 }
 
 export interface WeddingSnapshot {
@@ -95,4 +118,5 @@ export interface WeddingSnapshot {
   menuOptions: MenuItem[]
   groups: GuestGroup[]
   programme: ProgrammeEvent[]
+  budgetExpenses?: BudgetExpense[]
 }

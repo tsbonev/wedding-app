@@ -8,6 +8,7 @@ const router = createRouter({
     { path: '/guests', component: () => import('@/pages/GuestListPage.vue') },
     { path: '/guests/:id', component: () => import('@/pages/GuestDetailPage.vue') },
     { path: '/programme', component: () => import('@/pages/ProgrammePage.vue') },
+    { path: '/budget', component: () => import('@/pages/BudgetPage.vue') },
     { path: '/seating', component: () => import('@/pages/SeatingChartPage.vue') },
     { path: '/meals', component: () => import('@/pages/MealPreferencesPage.vue') },
     { path: '/rooms', component: () => import('@/pages/HotelRoomsPage.vue') },

@@ -8,6 +8,8 @@ export const useRoomStore = defineStore('rooms', () => {
   const roomTypes = ref<string[]>(['suite', 'single', 'double'])
   const globalCheckIn = ref<string | null>(null)
   const globalCheckOut = ref<string | null>(null)
+  const roomPricingMode = ref<'per-room' | 'average'>('per-room')
+  const averageRoomPrice = ref(0)
 
   const sortedRooms = computed(() => {
     return [...rooms.value].sort((a, b) => {
@@ -18,7 +20,7 @@ export const useRoomStore = defineStore('rooms', () => {
   const getById = (id: string) => rooms.value.find((r) => r.id === id)
 
   function addRoom(payload: Omit<Room, 'id' | 'guestIds'>) {
-    rooms.value.push({ ...payload, id: crypto.randomUUID(), guestIds: [] })
+    rooms.value.push({ ...payload, price: payload.price ?? 0, id: crypto.randomUUID(), guestIds: [] })
   }
 
   function addRoomType(type: string) {
@@ -88,7 +90,10 @@ export const useRoomStore = defineStore('rooms', () => {
   }
 
   function bulkReplace(list: Room[]) {
-    rooms.value = list
+    rooms.value = list.map((room) => ({
+      ...room,
+      price: typeof room.price === 'number' ? room.price : 0,
+    }))
   }
 
   function updateGlobalTimes(checkIn: string | null, checkOut: string | null) {
@@ -98,5 +103,34 @@ export const useRoomStore = defineStore('rooms', () => {
     rooms.value = [...rooms.value]
   }
 
-  return { rooms, sortedRooms, roomTypes, globalCheckIn, globalCheckOut, getById, addRoom, addRoomType, removeRoomType, updateRoomType, updateRoom, deleteRoom, assignGuests, unassignGuest, bulkReplace, updateGlobalTimes }
+  function setRoomPricingMode(mode: 'per-room' | 'average') {
+    roomPricingMode.value = mode
+  }
+
+  function setAverageRoomPrice(price: number) {
+    averageRoomPrice.value = Number.isFinite(price) ? Math.max(0, Math.round(price * 100) / 100) : 0
+  }
+
+  return {
+    rooms,
+    sortedRooms,
+    roomTypes,
+    globalCheckIn,
+    globalCheckOut,
+    roomPricingMode,
+    averageRoomPrice,
+    getById,
+    addRoom,
+    addRoomType,
+    removeRoomType,
+    updateRoomType,
+    updateRoom,
+    deleteRoom,
+    assignGuests,
+    unassignGuest,
+    bulkReplace,
+    updateGlobalTimes,
+    setRoomPricingMode,
+    setAverageRoomPrice,
+  }
 }, { persist: true })
