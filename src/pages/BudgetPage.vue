@@ -459,7 +459,7 @@ function renderExpenseActionLabel(option: any) {
           </div>
         </div>
 
-        <div class="budget-table-wrap">
+        <div class="budget-table-wrap desktop-only">
           <table class="budget-table">
             <thead>
               <tr>
@@ -557,6 +557,94 @@ function renderExpenseActionLabel(option: any) {
             </tbody>
           </table>
         </div>
+
+        <div class="budget-mobile-list mobile-only">
+          <template v-for="expense in sortedExpenses" :key="`mobile-${expense.id}`">
+            <div class="budget-mobile-item">
+              <div class="budget-mobile-head">
+                <div class="budget-mobile-title">
+                  <span class="budget-mobile-emoji">{{ expense.iconEmoji || '•' }}</span>
+                  <div>
+                    <div class="budget-mobile-name">{{ expense.name }}</div>
+                    <n-text depth="3" style="font-size: 12px;">{{ getTypeLabel(expense.type) }}</n-text>
+                  </div>
+                </div>
+                <n-dropdown
+                  trigger="click"
+                  :options="expenseActionOptions"
+                  :render-label="renderExpenseActionLabel"
+                  @select="(key) => handleExpenseAction(expense, key)"
+                >
+                  <n-button size="tiny" quaternary circle>
+                    <template #icon>
+                      <n-icon :component="MoreHorizontal" />
+                    </template>
+                  </n-button>
+                </n-dropdown>
+              </div>
+
+              <div class="budget-mobile-grid">
+                <div class="budget-mobile-row"><span>{{ i18n.t('planned_amount') }}</span><strong>{{ formatAmount(getEffectivePlannedAmount(expense)) }}</strong></div>
+                <div class="budget-mobile-row"><span>{{ i18n.t('paid_amount') }}</span><strong>{{ formatAmount(expense.paidAmount) }} ({{ getPaidPercent(expense) }}%)</strong></div>
+                <div class="budget-mobile-row"><span>{{ i18n.t('final_amount') }}</span><strong>{{ formatAmount(getEffectiveFinalAmount(expense)) }}</strong></div>
+                <div class="budget-mobile-row"><span>{{ i18n.t('remaining_to_pay') }}</span><strong>{{ formatAmount(getEffectivePlannedAmount(expense) - expense.paidAmount) }}</strong></div>
+              </div>
+
+              <div v-if="editingId === expense.id && draftExpense" class="budget-mobile-editor">
+                <div class="edit-grid">
+                  <div class="field-wrap field-emoji">
+                    <span class="field-label">{{ i18n.t('icon') }}</span>
+                    <div class="emoji-input-row">
+                      <n-input v-model:value="draftExpense.iconEmoji" :placeholder="i18n.t('placeholder_emoji')" maxlength="2" />
+                      <n-popover trigger="click" placement="bottom-start" :width="300" scrollable>
+                        <template #trigger>
+                          <n-button ghost style="padding: 0 8px;">
+                            {{ draftExpense.iconEmoji || '🙂' }}
+                          </n-button>
+                        </template>
+                        <EmojiPicker :native="true" @select="onDraftEmojiSelect" />
+                      </n-popover>
+                    </div>
+                  </div>
+                  <div class="field-wrap field-name"><span class="field-label">{{ i18n.t('expense_name') }}</span><n-input v-model:value="draftExpense.name" /></div>
+                  <div class="field-wrap field-type"><span class="field-label">{{ i18n.t('expense_type') }}</span><n-select v-model:value="draftExpense.type" :options="expenseTypeOptions" /></div>
+
+                  <template v-if="draftExpense.type === 'manual'">
+                    <div class="field-wrap field-amount"><span class="field-label">{{ i18n.t('planned_amount') }}</span><n-input-number v-model:value="draftExpense.plannedAmount" :min="0" :precision="2" style="width:100%" /></div>
+                  </template>
+
+                  <template v-if="draftExpense.type === 'plates'">
+                    <div class="field-wrap field-type"><span class="field-label">{{ i18n.t('plate_pricing_mode') }}</span><n-select v-model:value="draftExpense.platePricingMode" :options="platePricingModeOptions" /></div>
+                    <div class="field-wrap field-wide"><n-checkbox v-model:checked="draftExpense.linkToSeatedGuests">{{ i18n.t('link_to_seated_guests') }}</n-checkbox></div>
+                    <div v-if="draftExpense.platePricingMode === 'adult-child'" class="field-wrap field-amount"><span class="field-label">{{ i18n.t('plate_adult_price') }}</span><n-input-number v-model:value="draftExpense.adultPlatePrice" :min="0" :precision="2" style="width:100%" /></div>
+                    <div v-if="draftExpense.platePricingMode === 'adult-child'" class="field-wrap field-amount"><span class="field-label">{{ i18n.t('plate_child_price') }}</span><n-input-number v-model:value="draftExpense.childPlatePrice" :min="0" :precision="2" style="width:100%" /></div>
+                    <div v-if="draftExpense.platePricingMode === 'adult-child' && !draftExpense.linkToSeatedGuests" class="field-wrap field-count"><span class="field-label">{{ i18n.t('adult_count') }}</span><n-input-number v-model:value="draftExpense.manualAdultCount" :min="0" :precision="0" style="width:100%" /></div>
+                    <div v-if="draftExpense.platePricingMode === 'adult-child' && !draftExpense.linkToSeatedGuests" class="field-wrap field-count"><span class="field-label">{{ i18n.t('child_count') }}</span><n-input-number v-model:value="draftExpense.manualChildCount" :min="0" :precision="0" style="width:100%" /></div>
+                  </template>
+
+                  <template v-if="draftExpense.type === 'rooms'">
+                    <div class="field-wrap field-type"><span class="field-label">{{ i18n.t('room_pricing_mode') }}</span><n-select v-model:value="draftExpense.roomPricingMode" :options="roomPricingModeOptions" /></div>
+                    <div class="field-wrap field-type"><span class="field-label">{{ i18n.t('rooms_count_mode') }}</span><n-select v-model:value="draftExpense.roomsOccupancyMode" :options="roomsOccupancyModeOptions" /></div>
+                    <div v-if="draftExpense.roomPricingMode === 'average'" class="field-wrap field-amount"><span class="field-label">{{ i18n.t('average_room_price_override') }}</span><n-input-number v-model:value="draftExpense.averageRoomPriceOverride" :min="0" :precision="2" style="width:100%" /></div>
+                  </template>
+
+                  <div class="field-wrap field-amount">
+                    <span class="field-label">{{ i18n.t('paid_amount') }}</span>
+                    <div class="paid-edit-row">
+                      <n-input-number v-model:value="draftExpense.paidAmount" :min="0" :precision="2" style="width:100%" />
+                      <n-button size="small" @click="setDraftPaidToPlanned">{{ i18n.t('pay') }}</n-button>
+                    </div>
+                  </div>
+                  <div class="field-wrap field-amount"><span class="field-label">{{ i18n.t('final_amount') }}</span><n-input-number v-model:value="draftExpense.finalAmount" :min="0" :precision="2" clearable style="width:100%" /></div>
+                </div>
+                <n-space justify="end" style="margin-top: 12px;">
+                  <n-button @click="cancelEdit">{{ i18n.t('cancel') }}</n-button>
+                  <n-button type="primary" @click="confirmEdit">{{ i18n.t('confirm') }}</n-button>
+                </n-space>
+              </div>
+            </div>
+          </template>
+        </div>
       </n-card>
     </n-space>
   </div>
@@ -576,6 +664,8 @@ function renderExpenseActionLabel(option: any) {
 .paid-edit-row { display: flex; align-items: center; gap: 8px; }
 .expense-bar-segment { transition: transform 0.2s ease; cursor: pointer; }
 .expense-bar-segment:hover { transform: scaleY(1.5); z-index: 1; }
+.desktop-only { display: block; }
+.mobile-only { display: none !important; }
 .budget-table-wrap { overflow-x: auto; }
 .budget-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .budget-table th, .budget-table td { border-bottom: 1px solid var(--border-soft); padding: 10px 8px; vertical-align: middle; }
@@ -633,4 +723,72 @@ function renderExpenseActionLabel(option: any) {
 .emoji-cell { font-size: 18px; width: 48px; text-align: center; }
 .editor-row { background: var(--bg-subtle); padding: 12px; }
 .edit-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.budget-mobile-list { flex-direction: column; gap: 12px; }
+.budget-mobile-item {
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--bg-card);
+}
+.budget-mobile-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.budget-mobile-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.budget-mobile-emoji { font-size: 20px; line-height: 1; }
+.budget-mobile-name {
+  font-weight: 600;
+  line-height: 1.2;
+  word-break: break-word;
+}
+.budget-mobile-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.budget-mobile-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+.budget-mobile-row span { color: var(--text-muted); }
+.budget-mobile-row strong {
+  text-align: right;
+  font-weight: 600;
+  word-break: break-word;
+}
+.budget-mobile-editor {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+@media (max-width: 767px) {
+  .budget-page {
+    max-width: 100%;
+  }
+  .desktop-only { display: none; }
+  .mobile-only { display: block !important; }
+  .budget-mobile-list { display: flex !important; }
+  .field-emoji,
+  .field-name,
+  .field-type,
+  .field-amount,
+  .field-wide,
+  .field-count {
+    width: 100%;
+    min-width: 0;
+  }
+  .paid-edit-row {
+    flex-wrap: wrap;
+  }
+}
 </style>
