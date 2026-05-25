@@ -13,7 +13,7 @@ const i18n = useI18nStore()
 const configStore = useAppConfigStore()
 const route = useRoute()
 const authStore = useAuthStore()
-const { loadLatestSnapshot, startAutoSave, stopAutoSave } = useCloudSync()
+const { loadLatestSnapshot, startAutoSave, stopAutoSave, resetSyncState } = useCloudSync()
 
 watch(() => authStore.user, async (user, prev) => {
   if (user && !prev) {
@@ -21,6 +21,7 @@ watch(() => authStore.user, async (user, prev) => {
     startAutoSave()
   } else if (!user && prev) {
     stopAutoSave()
+    resetSyncState()
   }
 })
 

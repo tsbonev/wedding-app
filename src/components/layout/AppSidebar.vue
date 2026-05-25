@@ -3,9 +3,11 @@ import { computed, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NMenu, NSpace, NButton, NIcon } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
-import { Moon, Sun } from 'lucide-vue-next'
+import { Moon, Sun, Save } from 'lucide-vue-next'
 import { useI18nStore } from '@/stores/useI18nStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { useCloudSync } from '@/composables/useCloudSync'
 
 const props = defineProps<{
   collapsed: boolean
@@ -15,6 +17,8 @@ const route = useRoute()
 const router = useRouter()
 const i18n = useI18nStore()
 const configStore = useAppConfigStore()
+const authStore = useAuthStore()
+const { hasUnsavedChanges, isSaving, saveSnapshot } = useCloudSync()
 
 const menuOptions = computed((): MenuOption[] => [
   { label: i18n.t('dashboard'), key: '/dashboard', icon: () => h('span', '📊') },
@@ -38,6 +42,38 @@ function handleSelect(key: string) {
 <template>
   <div class="sidebar-container">
     <div class="menu-content">
+      <div v-if="authStore.user && hasUnsavedChanges" class="unsaved-banner" :class="{ 'is-collapsed': props.collapsed }">
+        <template v-if="!props.collapsed">
+          <div class="banner-text">{{ i18n.t('unsaved_changes') }}</div>
+          <n-button
+            type="warning"
+            size="small"
+            secondary
+            :loading="isSaving"
+            @click="saveSnapshot"
+            style="width: 100%; margin-top: 8px;"
+          >
+            <template #icon>
+              <n-icon :component="Save" />
+            </template>
+            {{ i18n.t('save_now') }}
+          </n-button>
+        </template>
+        <template v-else>
+          <n-button
+            circle
+            type="warning"
+            size="medium"
+            :loading="isSaving"
+            @click="saveSnapshot"
+            :title="i18n.t('save_now')"
+          >
+            <template #icon>
+              <n-icon :component="Save" />
+            </template>
+          </n-button>
+        </template>
+      </div>
       <n-menu
         :value="activeKey"
         :options="menuOptions"
@@ -90,6 +126,27 @@ function handleSelect(key: string) {
 }
 .menu-content {
   flex: 1;
+}
+.unsaved-banner {
+  margin: 16px;
+  padding: 12px;
+  background-color: rgba(240, 160, 32, 0.1);
+  border: 1px solid rgba(240, 160, 32, 0.3);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.unsaved-banner.is-collapsed {
+  margin: 8px 0;
+  padding: 8px 0;
+  background-color: transparent;
+  border: none;
+}
+.banner-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #f0a020;
 }
 .language-switcher {
   padding: 16px;

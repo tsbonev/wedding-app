@@ -1,5 +1,4 @@
-import { ref } from 'vue'
-import { toRaw } from 'vue'
+import { ref, computed, toRaw } from 'vue'
 import {
   collection,
   addDoc,
@@ -29,6 +28,32 @@ const COLLECTION = 'snapshots'
 const MAX_TODAY = 5
 const MAX_PAST_DAYS = 5
 
+// Shared across all useCloudSync() calls
+const latestSyncedJson = ref<string | null>(null)
+
+function normalizeForCompare(s: WeddingSnapshot): string {
+  const { exportedAt, version, ...rest } = s
+  // Recursively sort object keys to ensure consistent stringification
+  return JSON.stringify(sortObjectKeys(rest))
+}
+
+function sortObjectKeys(obj: any): any {
+  if (obj === null || typeof obj !== 'object') {
+    return obj
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sortObjectKeys)
+  }
+  // Use toRaw to ensure we are working with the actual object if it's a proxy
+  const rawObj = toRaw(obj)
+  return Object.keys(rawObj)
+    .sort()
+    .reduce((acc: any, key) => {
+      acc[key] = sortObjectKeys(rawObj[key])
+      return acc
+    }, {})
+}
+
 export interface CloudSnapshot {
   id: string
   savedAt: Date
@@ -55,25 +80,25 @@ export function useCloudSync() {
       version: 1,
       exportedAt: new Date().toISOString(),
       config: {
-        coupleName: toRaw(configStore.coupleName),
-        weddingDate: toRaw(configStore.weddingDate),
-        venue: toRaw(configStore.venue),
-        currency: toRaw(configStore.currency),
-        guestSidebarWidth: toRaw(configStore.guestSidebarWidth),
-        showBudgetOnDashboard: toRaw(configStore.showBudgetOnDashboard),
+        coupleName: configStore.coupleName,
+        weddingDate: configStore.weddingDate,
+        venue: configStore.venue,
+        currency: configStore.currency,
+        guestSidebarWidth: configStore.guestSidebarWidth,
+        showBudgetOnDashboard: configStore.showBudgetOnDashboard,
       },
-      guests: toRaw(guestStore.guests),
-      tables: toRaw(seatingStore.tables),
-      rooms: toRaw(roomStore.rooms),
-      roomTypes: toRaw(roomStore.roomTypes),
-      roomGlobalCheckIn: toRaw(roomStore.globalCheckIn),
-      roomGlobalCheckOut: toRaw(roomStore.globalCheckOut),
-      roomPricingMode: toRaw(roomStore.roomPricingMode),
-      roomAveragePrice: toRaw(roomStore.averageRoomPrice),
-      menuOptions: toRaw(menuStore.menuOptions),
-      groups: toRaw(groupStore.groups),
-      programme: toRaw(programmeStore.events),
-      budgetExpenses: toRaw(budgetStore.expenses),
+      guests: guestStore.guests,
+      tables: seatingStore.tables,
+      rooms: roomStore.rooms,
+      roomTypes: roomStore.roomTypes,
+      roomGlobalCheckIn: roomStore.globalCheckIn,
+      roomGlobalCheckOut: roomStore.globalCheckOut,
+      roomPricingMode: roomStore.roomPricingMode,
+      roomAveragePrice: roomStore.averageRoomPrice,
+      menuOptions: menuStore.menuOptions,
+      groups: groupStore.groups,
+      programme: programmeStore.events,
+      budgetExpenses: budgetStore.expenses,
     }
   }
 
@@ -111,12 +136,15 @@ export function useCloudSync() {
     isSaving.value = true
     try {
       const snapshot = buildSnapshot()
+      // Use JSON.parse(JSON.stringify(snapshot)) to ensure we have a clean, non-reactive object for Firestore
+      const cleanSnapshot = JSON.parse(JSON.stringify(snapshot))
       await addDoc(collection(db, COLLECTION), {
-        snapshot,
+        snapshot: cleanSnapshot,
         savedAt: serverTimestamp(),
         savedBy: authStore.user.email ?? authStore.user.uid,
       })
       lastSavedAt.value = new Date()
+      latestSyncedJson.value = normalizeForCompare(snapshot)
       await pruneSnapshots()
     } finally {
       isSaving.value = false
@@ -126,9 +154,18 @@ export function useCloudSync() {
   async function loadLatestSnapshot(): Promise<boolean> {
     const q = query(collection(db, COLLECTION), orderBy('savedAt', 'desc'), limit(1))
     const snap = await getDocs(q)
-    if (snap.empty) return false
+    if (snap.empty) {
+      // No snapshots yet, treat current state as synced if user is logged in
+      const authStore = useAuthStore()
+      if (authStore.user) {
+        latestSyncedJson.value = normalizeForCompare(buildSnapshot())
+      }
+      return false
+    }
     const data = snap.docs[0].data()
-    applySnapshotData(data.snapshot as WeddingSnapshot)
+    const loaded = data.snapshot as WeddingSnapshot
+    applySnapshotData(loaded)
+    latestSyncedJson.value = normalizeForCompare(loaded)
     return true
   }
 
@@ -149,6 +186,7 @@ export function useCloudSync() {
 
   function restoreSnapshot(snapshot: WeddingSnapshot): void {
     applySnapshotData(snapshot)
+    latestSyncedJson.value = normalizeForCompare(snapshot)
   }
 
   function startAutoSave(intervalMs = 600_000): void {
@@ -166,14 +204,28 @@ export function useCloudSync() {
     }
   }
 
+  function resetSyncState(): void {
+    latestSyncedJson.value = null
+  }
+
+  const hasUnsavedChanges = computed(() => {
+    if (!latestSyncedJson.value) return false
+    const snapshot = buildSnapshot()
+    const current = normalizeForCompare(snapshot)
+    return current !== latestSyncedJson.value
+  })
+
   return {
     isSaving,
     lastSavedAt,
+    hasUnsavedChanges,
+    latestSyncedJson,
     saveSnapshot,
     loadLatestSnapshot,
     listSnapshots,
     restoreSnapshot,
     startAutoSave,
     stopAutoSave,
+    resetSyncState,
   }
 }
