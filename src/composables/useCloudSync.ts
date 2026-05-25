@@ -20,6 +20,7 @@ import { useRoomStore } from '@/stores/useRoomStore'
 import { useMenuStore } from '@/stores/useMenuStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useProgrammeStore } from '@/stores/useProgrammeStore'
+import { useBudgetStore } from '@/stores/useBudgetStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import { applySnapshotData } from '@/composables/useStateSnapshot'
 import type { WeddingSnapshot } from '@/types'
@@ -46,6 +47,7 @@ export function useCloudSync() {
     const menuStore = useMenuStore()
     const groupStore = useGroupStore()
     const programmeStore = useProgrammeStore()
+    const budgetStore = useBudgetStore()
     const configStore = useAppConfigStore()
 
     return {
@@ -55,14 +57,22 @@ export function useCloudSync() {
         coupleName: toRaw(configStore.coupleName),
         weddingDate: toRaw(configStore.weddingDate),
         venue: toRaw(configStore.venue),
+        currency: toRaw(configStore.currency),
         guestSidebarWidth: toRaw(configStore.guestSidebarWidth),
+        showBudgetOnDashboard: toRaw(configStore.showBudgetOnDashboard),
       },
       guests: toRaw(guestStore.guests),
       tables: toRaw(seatingStore.tables),
       rooms: toRaw(roomStore.rooms),
+      roomTypes: toRaw(roomStore.roomTypes),
+      roomGlobalCheckIn: toRaw(roomStore.globalCheckIn),
+      roomGlobalCheckOut: toRaw(roomStore.globalCheckOut),
+      roomPricingMode: toRaw(roomStore.roomPricingMode),
+      roomAveragePrice: toRaw(roomStore.averageRoomPrice),
       menuOptions: toRaw(menuStore.menuOptions),
       groups: toRaw(groupStore.groups),
       programme: toRaw(programmeStore.events),
+      budgetExpenses: toRaw(budgetStore.expenses),
     }
   }
 
