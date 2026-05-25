@@ -26,7 +26,8 @@ import { applySnapshotData } from '@/composables/useStateSnapshot'
 import type { WeddingSnapshot } from '@/types'
 
 const COLLECTION = 'snapshots'
-const MAX_SNAPSHOTS = 5
+const MAX_TODAY = 5
+const MAX_PAST_DAYS = 5
 
 export interface CloudSnapshot {
   id: string
@@ -76,11 +77,32 @@ export function useCloudSync() {
     }
   }
 
-  async function pruneOldSnapshots(): Promise<void> {
+  async function pruneSnapshots(): Promise<void> {
     const q = query(collection(db, COLLECTION), orderBy('savedAt', 'desc'))
     const snap = await getDocs(q)
-    const toDelete = snap.docs.slice(MAX_SNAPSHOTS)
-    await Promise.all(toDelete.map((d) => deleteDoc(doc(db, COLLECTION, d.id))))
+
+    const todayStr = new Date().toISOString().slice(0, 10)
+    let todayCount = 0
+    const keptPastDays = new Set<string>()
+    const toDelete: string[] = []
+
+    for (const d of snap.docs) {
+      const savedAt = (d.data().savedAt as Timestamp)?.toDate() ?? new Date(0)
+      const dayStr = savedAt.toISOString().slice(0, 10)
+
+      if (dayStr === todayStr) {
+        todayCount++
+        if (todayCount > MAX_TODAY) toDelete.push(d.id)
+      } else {
+        if (!keptPastDays.has(dayStr) && keptPastDays.size < MAX_PAST_DAYS) {
+          keptPastDays.add(dayStr)
+        } else {
+          toDelete.push(d.id)
+        }
+      }
+    }
+
+    await Promise.all(toDelete.map((id) => deleteDoc(doc(db, COLLECTION, id))))
   }
 
   async function saveSnapshot(): Promise<void> {
@@ -95,7 +117,7 @@ export function useCloudSync() {
         savedBy: authStore.user.email ?? authStore.user.uid,
       })
       lastSavedAt.value = new Date()
-      await pruneOldSnapshots()
+      await pruneSnapshots()
     } finally {
       isSaving.value = false
     }
@@ -111,7 +133,7 @@ export function useCloudSync() {
   }
 
   async function listSnapshots(): Promise<CloudSnapshot[]> {
-    const q = query(collection(db, COLLECTION), orderBy('savedAt', 'desc'), limit(MAX_SNAPSHOTS))
+    const q = query(collection(db, COLLECTION), orderBy('savedAt', 'desc'), limit(MAX_TODAY + MAX_PAST_DAYS))
     const snap = await getDocs(q)
     return snap.docs.map((d) => {
       const data = d.data()
@@ -129,7 +151,7 @@ export function useCloudSync() {
     applySnapshotData(snapshot)
   }
 
-  function startAutoSave(intervalMs = 45_000): void {
+  function startAutoSave(intervalMs = 600_000): void {
     if (autoSaveTimer !== null) return
     autoSaveTimer = setInterval(() => {
       const authStore = useAuthStore()
