@@ -15,6 +15,7 @@ export default defineConfig({
         manualChunks: (id: string) => {
           if (id.includes('naive-ui')) return 'vendor-ui'
           if (id.includes('@vueuse')) return 'vendor-vueuse'
+          if (id.includes('firebase')) return 'vendor-firebase'
           if (id.includes('node_modules')) return 'vendor-vue'
         },
       },

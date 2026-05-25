@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import {
-  NCard, NForm, NFormItem, NInput, NButton, NDivider, NText, NPopconfirm, NDatePicker, NCheckbox, NSelect
+  NCard, NForm, NFormItem, NInput, NButton, NDivider, NText, NPopconfirm, NDatePicker,
+  NCheckbox, NSelect, NAlert, NSpin, NList, NListItem, NThing, NSpace,
 } from 'naive-ui'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 import { useGroupStore } from '@/stores/useGroupStore'
 import { useI18nStore } from '@/stores/useI18nStore'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { useCloudSync } from '@/composables/useCloudSync'
+import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore'
+import { db } from '@/firebase'
+import ConfirmModal from '@/components/shared/ConfirmModal.vue'
 import type { GuestGroup } from '@/types'
+import type { CloudSnapshot } from '@/composables/useCloudSync'
 
 const config = useAppConfigStore()
 const groupStore = useGroupStore()
@@ -58,6 +65,75 @@ const currencyOptions = computed(() => [
   { label: `€ ${i18n.t('currency_eur')}`, value: 'EUR' },
   { label: `$ ${i18n.t('currency_usd')}`, value: 'USD' },
 ])
+
+// Cloud sync
+const authStore = useAuthStore()
+const { isSaving, lastSavedAt, saveSnapshot, listSnapshots, restoreSnapshot, startAutoSave } = useCloudSync()
+
+const cloudSnapshots = ref<CloudSnapshot[]>([])
+const loadingHistory = ref(false)
+const cloudError = ref('')
+const cloudSuccess = ref('')
+const showRestoreConfirm = ref(false)
+const pendingRestore = ref<CloudSnapshot | null>(null)
+
+const allowedEmails = ref<string[]>([])
+const newAllowedEmail = ref('')
+const allowlistError = ref('')
+
+async function refreshHistory() {
+  if (!authStore.user) return
+  loadingHistory.value = true
+  try { cloudSnapshots.value = await listSnapshots() }
+  catch { cloudError.value = i18n.t('cloud_error_history') }
+  finally { loadingHistory.value = false }
+}
+
+async function loadAllowlist() {
+  const snap = await getDocs(collection(db, 'allowedEmails'))
+  allowedEmails.value = snap.docs.map(d => d.id)
+}
+
+async function addAllowedEmail() {
+  const email = newAllowedEmail.value.trim().toLowerCase()
+  if (!email || !email.includes('@')) { allowlistError.value = i18n.t('cloud_invalid_email'); return }
+  allowlistError.value = ''
+  await setDoc(doc(db, 'allowedEmails', email), { allowed: true })
+  newAllowedEmail.value = ''
+  await loadAllowlist()
+}
+
+async function removeAllowedEmail(email: string) {
+  await deleteDoc(doc(db, 'allowedEmails', email))
+  await loadAllowlist()
+}
+
+async function handleSave() {
+  cloudError.value = ''; cloudSuccess.value = ''
+  try {
+    await saveSnapshot()
+    cloudSuccess.value = i18n.t('cloud_success_saved')
+    await refreshHistory()
+  } catch { cloudError.value = i18n.t('cloud_error_save') }
+}
+
+function promptRestore(snap: CloudSnapshot) {
+  pendingRestore.value = snap
+  showRestoreConfirm.value = true
+}
+
+function confirmRestore() {
+  if (pendingRestore.value) restoreSnapshot(pendingRestore.value.snapshot)
+  showRestoreConfirm.value = false
+  pendingRestore.value = null
+  cloudSuccess.value = i18n.t('cloud_restored')
+}
+
+onMounted(() => {
+  if (authStore.user) { refreshHistory(); loadAllowlist(); startAutoSave() }
+})
+
+watch(() => authStore.user, (u) => { if (u) { refreshHistory(); loadAllowlist() } })
 </script>
 
 <template>
@@ -166,6 +242,90 @@ const currencyOptions = computed(() => [
         </n-button>
       </div>
     </n-card>
+
+    <!-- Cloud Sync Auth -->
+    <n-card :title="i18n.t('cloud_sync')" style="margin-bottom: 20px;">
+      <n-space vertical>
+        <template v-if="authStore.isLoading">
+          <n-space align="center"><n-spin size="small" /><n-text>{{ i18n.t('cloud_checking') }}</n-text></n-space>
+        </template>
+        <template v-else-if="!authStore.user">
+          <n-alert v-if="authStore.accessDenied" type="error" style="margin-bottom: 8px;">
+            {{ i18n.t('cloud_access_denied') }}
+          </n-alert>
+          <n-text>{{ i18n.t('cloud_sign_in_description') }}</n-text>
+          <n-button type="primary" style="margin-top: 8px;" @click="authStore.signIn">{{ i18n.t('cloud_sign_in') }}</n-button>
+        </template>
+        <template v-else>
+          <n-text>{{ i18n.t('cloud_signed_in_as') }} <strong>{{ authStore.user.email }}</strong></n-text>
+          <n-button style="margin-top: 8px;" @click="authStore.signOut">{{ i18n.t('cloud_sign_out') }}</n-button>
+        </template>
+      </n-space>
+    </n-card>
+
+    <!-- Cloud Saves -->
+    <n-card v-if="authStore.user" :title="i18n.t('cloud_saves')" style="margin-bottom: 20px;">
+      <n-space vertical>
+        <n-alert v-if="cloudError" type="error" closable @close="cloudError = ''">{{ cloudError }}</n-alert>
+        <n-alert v-if="cloudSuccess" type="success" closable @close="cloudSuccess = ''">{{ cloudSuccess }}</n-alert>
+
+        <n-space align="center">
+          <n-button type="primary" :loading="isSaving" @click="handleSave">{{ i18n.t('cloud_save_button') }}</n-button>
+          <n-text v-if="lastSavedAt" depth="3" style="font-size: 12px;">
+            {{ i18n.t('cloud_last_saved') }} {{ lastSavedAt.toLocaleString() }}
+          </n-text>
+        </n-space>
+
+        <n-divider />
+        <n-text strong>{{ i18n.t('cloud_version_history') }}</n-text>
+        <n-spin v-if="loadingHistory" />
+        <n-text v-else-if="!cloudSnapshots.length" depth="3">{{ i18n.t('cloud_no_saves') }}</n-text>
+        <n-list v-else bordered>
+          <n-list-item v-for="snap in cloudSnapshots" :key="snap.id">
+            <n-thing :title="snap.savedAt.toLocaleString()" :description="i18n.t('cloud_saved_by') + ' ' + snap.savedBy" />
+            <template #suffix>
+              <n-button size="small" @click="promptRestore(snap)">{{ i18n.t('cloud_restore') }}</n-button>
+            </template>
+          </n-list-item>
+        </n-list>
+      </n-space>
+    </n-card>
+
+    <!-- Allowed Accounts -->
+    <n-card v-if="authStore.user" :title="i18n.t('cloud_allowed_accounts')" style="margin-bottom: 20px;">
+      <n-space vertical>
+        <n-alert v-if="allowlistError" type="error" closable @close="allowlistError = ''">{{ allowlistError }}</n-alert>
+        <n-list bordered>
+          <n-list-item v-for="email in allowedEmails" :key="email">
+            <n-text>{{ email }}</n-text>
+            <template #suffix>
+              <n-button
+                size="small"
+                type="error"
+                ghost
+                :disabled="email === authStore.user!.email"
+                @click="removeAllowedEmail(email)"
+              >
+                {{ i18n.t('remove') }}
+              </n-button>
+            </template>
+          </n-list-item>
+        </n-list>
+        <n-space align="flex-end" style="margin-top: 8px;">
+          <n-input v-model:value="newAllowedEmail" :placeholder="i18n.t('cloud_placeholder_email')" style="width: 260px;" @keyup.enter="addAllowedEmail" />
+          <n-button @click="addAllowedEmail">{{ i18n.t('cloud_add_account') }}</n-button>
+        </n-space>
+      </n-space>
+    </n-card>
+
+    <ConfirmModal
+      :show="showRestoreConfirm"
+      :message="i18n.t('cloud_restore_confirm')"
+      :confirm-text="i18n.t('cloud_restore')"
+      confirm-type="warning"
+      @confirm="confirmRestore"
+      @cancel="showRestoreConfirm = false; pendingRestore = null"
+    />
   </div>
 </template>
 

@@ -6,10 +6,23 @@ import { bgBG } from '@/locales/bgBG'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { useI18nStore } from '@/stores/useI18nStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { useCloudSync } from '@/composables/useCloudSync'
 
 const i18n = useI18nStore()
 const configStore = useAppConfigStore()
 const route = useRoute()
+const authStore = useAuthStore()
+const { loadLatestSnapshot, startAutoSave, stopAutoSave } = useCloudSync()
+
+watch(() => authStore.user, async (user, prev) => {
+  if (user && !prev) {
+    await loadLatestSnapshot()
+    startAutoSave()
+  } else if (!user && prev) {
+    stopAutoSave()
+  }
+})
 
 const naiveLocale = computed(() => i18n.locale === 'en' ? enUS : bgBG)
 const naiveTheme = computed(() => configStore.isDarkMode ? darkTheme : null)

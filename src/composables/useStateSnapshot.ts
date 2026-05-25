@@ -9,6 +9,41 @@ import { useProgrammeStore } from '@/stores/useProgrammeStore'
 import { useBudgetStore } from '@/stores/useBudgetStore'
 import { useAppConfigStore } from '@/stores/useAppConfigStore'
 
+export function applySnapshotData(snapshot: WeddingSnapshot): void {
+  const guestStore = useGuestStore()
+  const seatingStore = useSeatingStore()
+  const roomStore = useRoomStore()
+  const menuStore = useMenuStore()
+  const groupStore = useGroupStore()
+  const programmeStore = useProgrammeStore()
+  const budgetStore = useBudgetStore()
+  const configStore = useAppConfigStore()
+
+  if (snapshot.config) {
+    configStore.coupleName = snapshot.config.coupleName ?? ''
+    configStore.weddingDate = snapshot.config.weddingDate ?? null
+    configStore.venue = snapshot.config.venue ?? ''
+    configStore.currency = snapshot.config.currency === 'USD' ? 'USD' : 'EUR'
+    if (snapshot.config.guestSidebarWidth) configStore.guestSidebarWidth = snapshot.config.guestSidebarWidth
+    if (typeof snapshot.config.showBudgetOnDashboard === 'boolean') {
+      configStore.showBudgetOnDashboard = snapshot.config.showBudgetOnDashboard
+    }
+  }
+  menuStore.bulkReplace(snapshot.menuOptions)
+  if (snapshot.groups) groupStore.bulkReplace(snapshot.groups)
+  if (snapshot.programme) programmeStore.setEvents(snapshot.programme)
+  budgetStore.bulkReplace(snapshot.budgetExpenses ?? [])
+  guestStore.bulkReplace(snapshot.guests)
+  seatingStore.bulkReplace(snapshot.tables)
+  roomStore.bulkReplace(snapshot.rooms)
+  if (Array.isArray(snapshot.roomTypes) && snapshot.roomTypes.length > 0) {
+    roomStore.roomTypes = snapshot.roomTypes
+  }
+  roomStore.updateGlobalTimes(snapshot.roomGlobalCheckIn ?? null, snapshot.roomGlobalCheckOut ?? null)
+  roomStore.setRoomPricingMode(snapshot.roomPricingMode === 'average' ? 'average' : 'per-room')
+  roomStore.setAverageRoomPrice(typeof snapshot.roomAveragePrice === 'number' ? snapshot.roomAveragePrice : 0)
+}
+
 export function useStateSnapshot() {
   function exportSnapshot(): void {
     const guestStore = useGuestStore()
@@ -71,39 +106,7 @@ export function useStateSnapshot() {
             return
           }
 
-          const guestStore = useGuestStore()
-          const seatingStore = useSeatingStore()
-          const roomStore = useRoomStore()
-          const menuStore = useMenuStore()
-          const groupStore = useGroupStore()
-          const programmeStore = useProgrammeStore()
-          const budgetStore = useBudgetStore()
-          const configStore = useAppConfigStore()
-
-          if (snapshot.config) {
-            configStore.coupleName = snapshot.config.coupleName ?? ''
-            configStore.weddingDate = snapshot.config.weddingDate ?? null
-            configStore.venue = snapshot.config.venue ?? ''
-            configStore.currency = snapshot.config.currency === 'USD' ? 'USD' : 'EUR'
-            if (snapshot.config.guestSidebarWidth) configStore.guestSidebarWidth = snapshot.config.guestSidebarWidth
-            if (typeof snapshot.config.showBudgetOnDashboard === 'boolean') {
-              configStore.showBudgetOnDashboard = snapshot.config.showBudgetOnDashboard
-            }
-          }
-          menuStore.bulkReplace(snapshot.menuOptions)
-          if (snapshot.groups) groupStore.bulkReplace(snapshot.groups)
-          if (snapshot.programme) programmeStore.setEvents(snapshot.programme)
-          budgetStore.bulkReplace(snapshot.budgetExpenses ?? [])
-          guestStore.bulkReplace(snapshot.guests)
-          seatingStore.bulkReplace(snapshot.tables)
-          roomStore.bulkReplace(snapshot.rooms)
-          if (Array.isArray(snapshot.roomTypes) && snapshot.roomTypes.length > 0) {
-            roomStore.roomTypes = snapshot.roomTypes
-          }
-          roomStore.updateGlobalTimes(snapshot.roomGlobalCheckIn ?? null, snapshot.roomGlobalCheckOut ?? null)
-          roomStore.setRoomPricingMode(snapshot.roomPricingMode === 'average' ? 'average' : 'per-room')
-          roomStore.setAverageRoomPrice(typeof snapshot.roomAveragePrice === 'number' ? snapshot.roomAveragePrice : 0)
-
+          applySnapshotData(snapshot)
           resolve(null)
         } catch {
           resolve('Failed to parse file. Make sure it is a valid wedding JSON export.')

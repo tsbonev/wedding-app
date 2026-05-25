@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@vueuse/core": "^14.2.1",
+    "firebase": "^12.13.0",
     "lucide-vue-next": "^1.0.0",
     "naive-ui": "^2.44.1",
     "pinia": "^3.0.4",
