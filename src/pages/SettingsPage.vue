@@ -68,7 +68,7 @@ const currencyOptions = computed(() => [
 
 // Cloud sync
 const authStore = useAuthStore()
-const { isSaving, lastSavedAt, saveSnapshot, listSnapshots, restoreSnapshot, startAutoSave } = useCloudSync()
+const { isSaving, lastSavedAt, saveSnapshot, listSnapshots, restoreSnapshot } = useCloudSync()
 
 const cloudSnapshots = ref<CloudSnapshot[]>([])
 const loadingHistory = ref(false)
@@ -130,7 +130,7 @@ function confirmRestore() {
 }
 
 onMounted(() => {
-  if (authStore.user) { refreshHistory(); loadAllowlist(); startAutoSave() }
+  if (authStore.user) { refreshHistory(); loadAllowlist() }
 })
 
 watch(() => authStore.user, (u) => { if (u) { refreshHistory(); loadAllowlist() } })

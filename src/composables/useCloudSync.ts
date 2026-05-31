@@ -64,7 +64,6 @@ export interface CloudSnapshot {
 export function useCloudSync() {
   const isSaving = ref(false)
   const lastSavedAt = ref<Date | null>(null)
-  let autoSaveTimer: ReturnType<typeof setInterval> | null = null
 
   function buildSnapshot(): WeddingSnapshot {
     const guestStore = useGuestStore()
@@ -189,21 +188,6 @@ export function useCloudSync() {
     latestSyncedJson.value = normalizeForCompare(snapshot)
   }
 
-  function startAutoSave(intervalMs = 600_000): void {
-    if (autoSaveTimer !== null) return
-    autoSaveTimer = setInterval(() => {
-      const authStore = useAuthStore()
-      if (authStore.user) saveSnapshot()
-    }, intervalMs)
-  }
-
-  function stopAutoSave(): void {
-    if (autoSaveTimer !== null) {
-      clearInterval(autoSaveTimer)
-      autoSaveTimer = null
-    }
-  }
-
   function resetSyncState(): void {
     latestSyncedJson.value = null
   }
@@ -224,8 +208,6 @@ export function useCloudSync() {
     loadLatestSnapshot,
     listSnapshots,
     restoreSnapshot,
-    startAutoSave,
-    stopAutoSave,
     resetSyncState,
   }
 }
